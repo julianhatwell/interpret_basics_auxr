@@ -73,9 +73,31 @@
 
 \subsubsection{The Survey Forest Method}
 
-This section describes methods for gathering structural statistics from a random forest using batches of data. In the inductive mode, the entire training set $\mathcal{LS}$, or a sample (without replacement) from it $\mathcal{LS}_s \subset \mathcal{LS}$, can be used. In the transductive mode, a batch of unseen data $\mathcal{TS}$ is used. This could be a held out set, or new samples where the true classes are known.
+This section describes methods for gathering structural statistics from a random forest using batches of data. In the inductive mode, the entire training set $\mathcal{LS}$, or a sample (without replacement) from it $\mathcal{LS}_s \subset \mathcal{LS}$, can be used. In the transductive mode, a batch of unseen data $\mathcal{TS}$ is used. This could be a held out set, or new samples where the true classes are known.\\
+
+Profiling of different classes can be achieved by running the process on a data batch that contains only instances where the true class is the target class. Another option is to profile misclassified instances, by running the process with a data batch containing only misclassified instances side by side with one containing only classified instances for comparison.
+
+$$\{\textbf{X}, Y\}, y_i \neq \hat{y}_i$$
+$$\{\textbf{X}, Y\}, y_i = \hat{y}_i$$
+
+Let $N$ be the number of instances in the batch and $T$ be the number of trees in the forest. Let $\overrightarrow{J}$ be the ordered set of features $(1, 2, \dots, j)$ after binary encoding? Is it important to state that?\\
 
 Let $\mathcal{J}$ be the set of features, where any ordinal or nominal variables having $K > 2$ have been converted to a set of binary valued variables (i.e. binary encoding or one hot encoding).
+
+Mean tree prediction accuracy:\\
+
+$$\frac{1}{N} \sum^N_{i=1}{\frac{1}{T} \sum^T_{t=1}{\textit{\textbf{I}}(\hat{y}^t_i =y_i)}}$$
+
+where $\textit{\textbf{I}}(<\text{expr}>)$ is the indicator function, returning 1 if $<\text{expr}>$ resolves to true and 0 otherwise.\\
+
+A decision path is the intersection of one instance and one tree. It represents all the nodes traversed in making a prediction for one instance by one tree. By ``walking'' the decision path of each tree for each instance in the forest, a $n \times t \times j$ dimensional feature depth array $A$ can be constructed where the value at $A_{i, t, j}$ is the depth, or number of steps along the decision path where feature $j$ was used in the split node, where a value of 0 indicates the root node, 1 indicates the left or right first child of the root, 2 indicates a grand-child of the root node, and so on. Only a subset of features are visited and any features not visited in a given path will contain a missing value at $A_{i, t, j}$. Note that there will be many missing values where a feature was not visited in a specific decision path. Various statistics can be counted from $A$:
+
+n_node_traversals
+n_root_traversals
+n_child_traversals
+n_lower_traversals
+n_nonroot_traversals
+
 
 The structure of a DT can be represented as a set of vectors. Let $\overrightarrow{F}$ be the vector of positional nodes with allowed values $j \in J$, being index numbers $j$ of the features as they appears in $\textbf{X}$. Let $\overrightarrow{C_L}$ and $\overrightarrow{C_R}$ also having allowed values $j \in J$, be vectors of left and right children respectively of the features ordered in $\overrightarrow{F}$. Such that the value at $\overrightarrow{F_0}$ is the index of the feature used at the root node, the value at $\overrightarrow{{C_L}_0}$ is the index of the feature used in the left child of the root node $\overrightarrow{F_1}$ is the 
 
