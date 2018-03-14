@@ -1,56 +1,46 @@
 library(ECoL)
-nursery <- read.csv("c:\\Dev\\Study\\Python\\interpret_basics\\nursery.csv"
-                    , col.names = c('parents'
-                                    , 'has_nurs'
-                                    , 'form'
-                                    , 'children'
-                                    , 'housing'
-                                    , 'finance'
-                                    , 'social'
-                                    , 'health'
-                                    , 'decision')
-)
+source("nursery_setup.R")
+# now check the complexity measures
 
 # C2 is best used for multiclass problems
 # ratio, should be close to 1
-balance(decision~., data = nursery)["C2"]
-# we know nursery is very unbalanced
-table(nursery$decision)
+balance(decision~., data = nursery_enc)["C2"]
+# we know nursery_enc is very unbalanced
+table(nursery_enc$decision)
 
 # this is the same for all variations
-dimensionality(decision~., data = nursery)
+dimensionality(decision~., data = nursery_enc)
 
-class_names <- as.character(unique(nursery$decision))
+# one versus all analysis
 
+class_names <- as.character(unique(nursery_enc$decision))
 for (cn in class_names) {
-  nursery_temp <- nursery
-  nursery_temp[[cn]] <- FALSE
-  nursery_temp[[cn]][as.character(nursery$decision) == cn] <- TRUE
-  nursery_temp$decision <- NULL
-  assign(paste0("nursery_", cn)
-         , nursery_temp) 
+  nursery_enc_temp <- nursery_enc
+  nursery_enc_temp[[cn]] <- FALSE
+  nursery_enc_temp[[cn]][as.character(nursery_enc$decision) == cn] <- TRUE
+  nursery_enc_temp$decision <- NULL
+  assign(paste0("nursery_enc_", cn)
+         , nursery_enc_temp) 
          
 }
 
 # C2 is best used for multiclass problems
 # ratio, should be close to 1
-balance(not_recom~., data = nursery_not_recom)["C2"]
-balance(priority~., data = nursery_priority)["C2"]
-balance(recommend~., data = nursery_recommend)["C2"]
-balance(spec_prior~., data = nursery_spec_prior)["C2"]
-balance(very_recom~., data = nursery_very_recom)["C2"]
+balance(not_recom~., data = nursery_enc_not_recom)["C2"]
+balance(priority~., data = nursery_enc_priority)["C2"]
+balance(spec_prior~., data = nursery_enc_spec_prior)["C2"]
+balance(very_recom~., data = nursery_enc_very_recom)["C2"]
 
-linearity(not_recom~., data = nursery_not_recom)
-linearity(priority~., data = nursery_priority)
-linearity(recommend~., data = nursery_recommend)
-linearity(spec_prior~., data = nursery_spec_prior)
-linearity(very_recom~., data = nursery_very_recom)
+linearity(not_recom~., data = nursery_enc_not_recom)
+linearity(priority~., data = nursery_enc_priority)
+linearity(spec_prior~., data = nursery_enc_spec_prior)
+linearity(very_recom~., data = nursery_enc_very_recom)
 
-overlapping(not_recom~., data = nursery_not_recom)
-overlapping(priority~., data = nursery_priority)
-overlapping(recommend~., data = nursery_recommend)
-overlapping(spec_prior~., data = nursery_spec_prior)
-overlapping(very_recom~., data = nursery_very_recom)
+overlapping(not_recom~., data = nursery_enc_not_recom)
+overlapping(priority~., data = nursery_enc_priority)
+overlapping(spec_prior~., data = nursery_enc_spec_prior)
+overlapping(very_recom~., data = nursery_enc_very_recom)
+
 
 target_url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/car/car.data'
 
@@ -70,7 +60,7 @@ car <- read.csv(target_url
 # C2 is best used for multiclass problems
 # ratio, should be close to 1
 balance(acceptability~., data = car)["C2"]
-# we know nursery is very unbalanced
+# we know nursery_enc is very unbalanced
 table(car$acceptability)
 
 # this is the same for all variations

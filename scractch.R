@@ -74,7 +74,7 @@ len <- rpois(10, 2) + 1
 scr <- function(s, l, a) {
   log(s) * (l - a)/l
 }
-a_vec <- seq(0, 1, 0.1)
+a_vec <- seq(-1, 1, 0.1)
 scrs <- t(sapply(a_vec, function(x) {mapply(FUN = scr, sup, len, a = x)}))
 
 matplot(scrs, pch = as.character(len)
