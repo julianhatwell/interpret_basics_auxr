@@ -1,5 +1,5 @@
 library(ECoL)
-source("nursery_setup.R")
+source("general_setup.R")
 # now check the complexity measures
 
 # C2 is best used for multiclass problems
@@ -31,6 +31,7 @@ balance(priority~., data = nursery_enc_priority)["C2"]
 balance(spec_prior~., data = nursery_enc_spec_prior)["C2"]
 balance(very_recom~., data = nursery_enc_very_recom)["C2"]
 
+linearity(decision~., data = nursery_enc)
 linearity(not_recom~., data = nursery_enc_not_recom)
 linearity(priority~., data = nursery_enc_priority)
 linearity(spec_prior~., data = nursery_enc_spec_prior)

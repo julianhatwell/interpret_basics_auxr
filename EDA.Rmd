@@ -1,0 +1,91 @@
+```{r prologue, include=FALSE}
+library(knitr)
+library(e1071)
+library(dplyr)
+library(lattice)
+library(ggplot2)
+library(vcd)
+library(vcdExtra)
+
+knitr::opts_chunk$set(warning = FALSE
+                      , message = FALSE
+                      , echo = FALSE
+                      , cache = TRUE
+                      )
+
+knitr::opts_template$set(
+  fig.wide = list(fig.height = 4.5, fig.width = 8, fig.align='center')
+  , fig.wideX = list(fig.height = 3, fig.width = 9, fig.align='center')
+  , fig.relaxed = list(fig.height = 6, fig.width = 8, fig.align='center')
+  , fig.tile = list(fig.height = 3, fig.width = 3, fig.align='center')
+)
+source("interpret_basics_theme.R")
+```
+
+---
+title: "Exploratory Analysis of ICDM datasets"
+author: "Julian Hatwell"
+date: `r format(Sys.time(), "%b %Y")`
+output: html_document
+---
+```{r load_data}
+source("general_setup.R")
+```
+
+# Exploratory data analysis
+## Adult
+
+```{r eda_adult, opts.label='fig.wideX'}
+summary(adult)
+
+cats <- sapply(adult, class)
+dnp <- list()
+bwp <- list()
+for (i in seq_along(cats)) {
+  if (names(adult)[i] != "income") {
+    if (cats[i] == "factor") {
+      if (length(levels(adult[[i]])) <= 8) {
+          fmla <- as.formula(paste(names(adult)[i]
+                                   , "~ income"))
+    mosaic(fmla, data = adult
+           , rot_labels = c(45, 0, 0, 0))      
+    }
+  print(paste("Association statistics for income and", names(adult)[i]))
+  print(assocstats(table(adult[[i]], adult$income))$chisq_tests)
+    } else {
+        fmla <- as.formula(paste("~", names(adult)[i]))
+        dnp[[names(adult)[i]]] <- densityplot(fmla, data = adult
+                                              , main = paste("Density of", names(adult)[i])
+                                              , par.settings = MyLatticeTheme
+           , strip = MyLatticeStrip)
+        
+        
+        fmla <- as.formula(paste(names(adult)[i], "~ income"))
+        bwp[[names(adult)[i]]] <- bwplot(fmla, data = adult
+                                              , main = paste("Boxplot of", names(adult)[i])
+                                              , par.settings = MyLatticeTheme
+           , strip = MyLatticeStrip)
+        
+        if (skewness(adult[[i]]) > 1) {
+          fmla <- as.formula(paste("~ log(", names(adult)[i], ")"))
+          dnp[[paste0("log(", names(adult)[i], ")")]] <- densityplot(fmla, data = adult
+                                                , main = paste0("Density of log(", names(adult)[i], ")")
+                                                , par.settings = MyLatticeTheme
+           , strip = MyLatticeStrip)
+          
+          fmla <- as.formula(paste("log(", names(adult)[i], " + 1 - abs(min(", names(adult)[i], "))) ~ income"))
+          bwp[[paste0("log(", names(adult)[i], ")")]] <- bwplot(fmla, data = adult
+                                                , main = paste0("Boxplot of log(", names(adult)[i], ") vs income")
+                                                , par.settings = MyLatticeTheme
+           , strip = MyLatticeStrip)
+        }
+    }
+  } 
+}
+for (d in names(dnp)) {
+  print(d)
+  print(dnp[[d]])
+  print(bwp[[d]])
+}
+```
+
