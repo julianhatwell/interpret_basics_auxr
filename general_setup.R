@@ -1,6 +1,6 @@
 library(dplyr)
 library(xlsx)
-library(vcd)
+
 # utility code
 onehot_encode <- function(dframe) {
   
