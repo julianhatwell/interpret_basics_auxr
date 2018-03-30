@@ -45,7 +45,7 @@ homedir <- "c:\\Dev\\Study\\Python\\interpret_basics2\\forest_surveyor\\datafile
 # accident
 print("Common setup for accident data")
 
-accident <- read.csv(gzfile(paste0(homedir, "accident_small_samp.csv.gz")))
+accident <- read.csv(gzfile(paste0(homedir, "accident.csv.gz")))
 print("accident: basic dataset")
 
 accident_enc <- accident %>% select(-Accident_Severity)
@@ -56,7 +56,7 @@ print("accident_enc: one hot encoded dataset")
 # adult
 print("Common setup for adult data")
 
-adult <- read.csv(gzfile(paste0(homedir, "adult_small_samp.csv.gz")))
+adult <- read.csv(gzfile(paste0(homedir, "adult.csv.gz")))
 print("adult: basic dataset")
 
 adult_enc <- adult %>% select(-income)
@@ -67,7 +67,7 @@ print("adult_enc: one hot encoded dataset")
 # bankmark
 print("Common setup for bankmark data")
 
-bankmark <- read.csv(gzfile(paste0(homedir, "bankmark_samp.csv.gz")))
+bankmark <- read.csv(gzfile(paste0(homedir, "bankmark.csv.gz")))
 print("bankmark: basic dataset")
 
 bankmark_enc <- bankmark %>% select(-y)
@@ -121,7 +121,7 @@ print("german_enc: one hot encoded dataset")
 
 # lending
 print("Common setup for lending data")
-lending <- read.csv(gzfile(paste0(homedir, "lending_tiny_samp.csv.gz")))
+lending <- read.csv(gzfile(paste0(homedir, "lending.csv.gz")))
 print("lending: basic dataset")
 
 lending_enc <- lending %>% select(-loan_status)
@@ -131,7 +131,7 @@ print("lending_enc: one hot encoded dataset")
 
 # nursery
 print("Common setup for nursery data")
-nursery <- read.csv(gzfile(paste0(homedir, "nursery_samp.csv.gz")))
+nursery <- read.csv(gzfile(paste0(homedir, "nursery.csv.gz")))
 
 print("nursery: basic dataset")
 
@@ -143,7 +143,7 @@ print("nursery_enc: one hot encoded dataset")
 # rcdv
 print("Common setup for rcdv data")
 
-rcdv <- read.csv(gzfile(paste0(homedir, "rcdv_samp.csv.gz")))
+rcdv <- read.csv(gzfile(paste0(homedir, "rcdv.csv.gz")))
 print("rcdv: basic dataset")
 
 rcdv_enc <- rcdv %>% select(-recid)
