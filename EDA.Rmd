@@ -29,13 +29,88 @@ date: `r format(Sys.time(), "%b %Y")`
 output: html_document
 ---
 ```{r load_data}
-source("general_setup.R")
+source("general_setup.R") # these are the sub samples where necessary
+
+dsets <- data.frame(
+  dnames = c("accident", "adult", "bankmark", "car", "cardiotography", "credit" , "german", "lending", "nursery", "rcdv")
+  , class_cols = c("Accident_Severity", "income", "y", "acceptability", "NSP", "A16", "rating", "loan_status", "decision", "recid")
+  , stringsAsFactors = FALSE
+  )
+source("load_complexity_results.R")
 ```
 
 # Exploratory data analysis
-## Adult
 
-```{r eda_adult, opts.label='fig.wideX'}
+```{r, opts.label='fig.wideX'}
+for (j in 1:2) {
+  dname <- dsets$dnames[j]
+  class_col <- dsets$class_cols[j]
+  
+  print(paste("Exploratory Analysis for", dname, "with target variable", class_col))
+        
+  dat <- get(dname)
+  cats <- sapply(dat, class)
+  facs <- names(dat)[cats == "factor" & names(dat) != class_col]
+  nums <- names(dat)[cats %in% c("numeric", "integer") & names(dat) != class_col]
+  
+  summary(dat)
+
+  print(complexity_measures[dname, ])
+  
+  dnp <- list()
+  bwp <- list()
+  
+  for (i in seq_along(cats)) {
+    if (names(dat)[i] != class_col) {
+      if (cats[i] == "factor") {
+        if (length(levels(dat[[i]])) <= 8) {
+            fmla <- as.formula(paste(names(dat)[i]
+                                     , "~", class_col))
+      mosaic(fmla, data = dat
+             , rot_labels = c(45, 0, 0, 0))      
+      }
+    print(paste("Association statistics for", class_col, "and", names(dat)[i]))
+    print(assocstats(table(dat[[i]], dat[[class_col]]))$chisq_tests)
+      } else {
+          fmla <- as.formula(paste("~", names(dat)[i]))
+          dnp[[names(dat)[i]]] <- densityplot(fmla, data = dat
+                                                , main = paste("Density of", names(dat)[i])
+                                                , par.settings = MyLatticeTheme
+             , strip = MyLatticeStrip)
+          
+          
+          fmla <- as.formula(paste(names(dat)[i], "~", class_col))
+          bwp[[names(dat)[i]]] <- bwplot(fmla, data = dat
+                                                , main = paste("Boxplot of", names(dat)[i], "by", class_col)
+                                                , par.settings = MyLatticeTheme
+             , strip = MyLatticeStrip)
+          
+          if (skewness(dat[[i]]) > 1) {
+            fmla <- as.formula(paste("~ log(", names(dat)[i], ")"))
+            dnp[[paste0("log(", names(dat)[i], ")")]] <- densityplot(fmla, data = dat
+                                                  , main = paste0("Density of log(", names(dat)[i], ")")
+                                                  , par.settings = MyLatticeTheme
+             , strip = MyLatticeStrip)
+            
+            fmla <- as.formula(paste0("log(", names(dat)[i], " + 1 - abs(min(", names(dat)[i], "))) ~ ", class_col))
+            bwp[[paste0("log(", names(dat)[i], ")")]] <- bwplot(fmla, data = dat
+                                                  , main = paste0("Boxplot of log(", names(dat)[i], ") vs ", class_col)
+                                                  , par.settings = MyLatticeTheme
+             , strip = MyLatticeStrip)
+          }
+        }
+      } 
+    }
+  for (d in names(dnp)) {
+  print(d)
+  print(dnp[[d]])
+  print(bwp[[d]])
+  }
+}
+```
+
+
+```{r eda_adult, opts.label='fig.wideX', eval=FALSE}
 summary(adult)
 
 cats <- sapply(adult, class)
