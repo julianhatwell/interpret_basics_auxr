@@ -1,0 +1,7 @@
+datafilesdir <- "C:\\Users\\id126493\\Documents\\GitHub\\interpret_basics2\\forest_surveyor\\datafiles\\"
+# datafilesdir <- "c:\\Dev\\Study\\Python\\interpret_basics2\\forest_surveyor\\datafiles\\"
+# datafilesdir <- "/home/ubuntu/forest_surveyor/data_files/"
+resultsfilesdir <- "C:\\Users\\id126493\\Documents\\GitHub\\interpret_basics2\\whiteboxing\\"
+# resultsfilesdir <- "c:\\Dev\\Study\\Python\\interpret_basics2\\whiteboxing\\"
+# resultsfilesdir <- "/home/ubuntu/forest_surveyor/whiteboxing/"
+resfilesdir <- "C:/Users/id126493/Documents/GitHub/interpret_basics2/whiteboxing"

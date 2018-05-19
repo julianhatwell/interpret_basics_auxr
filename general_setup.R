@@ -1,4 +1,5 @@
-# library(dplyr)
+library(dplyr)
+source("dirs.R")
 
 # utility code
 onehot_encode <- function(dframe) {
@@ -39,13 +40,10 @@ onehot_encode <- function(dframe) {
   dframe
 }
 
-homedir <- "c:\\Dev\\Study\\Python\\interpret_basics2\\forest_surveyor\\datafiles\\"
-# homedir <- "/home/ubuntu/forest_surveyor/data_files"
-
 # accident
 print("Common setup for accident data")
 
-accident <- read.csv(gzfile(paste0(homedir, "accident_small_samp.csv.gz")))
+accident <- read.csv(gzfile(paste0(datafilesdir, "accident_small_samp.csv.gz")))
 print("accident: basic dataset")
 
 accident_enc <- accident %>% select(-Accident_Severity)
@@ -56,7 +54,7 @@ print("accident_enc: one hot encoded dataset")
 # adult
 print("Common setup for adult data")
 
-adult <- read.csv(gzfile(paste0(homedir, "adult_small_samp.csv.gz")))
+adult <- read.csv(gzfile(paste0(datafilesdir, "adult_small_samp.csv.gz")))
 print("adult: basic dataset")
 
 adult_enc <- adult %>% select(-income)
@@ -67,7 +65,7 @@ print("adult_enc: one hot encoded dataset")
 # bankmark
 print("Common setup for bankmark data")
 
-bankmark <- read.csv(gzfile(paste0(homedir, "bankmark_samp.csv.gz")))
+bankmark <- read.csv(gzfile(paste0(datafilesdir, "bankmark_samp.csv.gz")))
 print("bankmark: basic dataset")
 
 bankmark_enc <- bankmark %>% select(-y)
@@ -78,7 +76,7 @@ print("bankmark_enc: one hot encoded dataset")
 # car
 print("Common setup for car data")
 
-car <- read.csv(gzfile(paste0(homedir, "car.csv.gz")))
+car <- read.csv(gzfile(paste0(datafilesdir, "car.csv.gz")))
 print("car: basic dataset")
 
 car_enc <- car %>% select(-acceptability)
@@ -89,7 +87,7 @@ print("car_enc: one hot encoded dataset")
 # cardiotrography
 print("Common setup for cardiotography data")
 
-cardiotography <- read.csv(gzfile(paste0(homedir, "cardiotography.csv.gz")))
+cardiotography <- read.csv(gzfile(paste0(datafilesdir, "cardiotography.csv.gz")))
 print("cardiotography: basic dataset")
 
 cardiotography_enc <- cardiotography %>% select(-NSP) # encode without the class column
@@ -100,7 +98,7 @@ print("cardiotography_enc: one hot encoded dataset")
 # credit
 print("Common setup for credit data")
 
-credit <- read.csv(gzfile(paste0(homedir, "credit.csv.gz")))
+credit <- read.csv(gzfile(paste0(datafilesdir, "credit.csv.gz")))
 print("credit: basic dataset")
 
 credit_enc <- credit %>% select(-A16)
@@ -111,7 +109,7 @@ print("credit_enc: one hot encoded dataset")
 # german
 print("Common setup for german data")
 
-german <- read.csv(gzfile(paste0(homedir, "german.csv.gz")))
+german <- read.csv(gzfile(paste0(datafilesdir, "german.csv.gz")))
 print("german: basic dataset")
 
 german_enc <- german %>% select(-rating)
@@ -121,7 +119,7 @@ print("german_enc: one hot encoded dataset")
 
 # lending
 print("Common setup for lending data")
-lending <- read.csv(gzfile(paste0(homedir, "lending_tiny_samp.csv.gz")))
+lending <- read.csv(gzfile(paste0(datafilesdir, "lending_tiny_samp.csv.gz")))
 print("lending: basic dataset")
 
 lending_enc <- lending %>% select(-loan_status)
@@ -131,7 +129,7 @@ print("lending_enc: one hot encoded dataset")
 
 # nursery
 print("Common setup for nursery data")
-nursery <- read.csv(gzfile(paste0(homedir, "nursery_samp.csv.gz")))
+nursery <- read.csv(gzfile(paste0(datafilesdir, "nursery_samp.csv.gz")))
 
 print("nursery: basic dataset")
 
@@ -143,7 +141,7 @@ print("nursery_enc: one hot encoded dataset")
 # rcdv
 print("Common setup for rcdv data")
 
-rcdv <- read.csv(gzfile(paste0(homedir, "rcdv_samp.csv.gz")))
+rcdv <- read.csv(gzfile(paste0(datafilesdir, "rcdv_samp.csv.gz")))
 print("rcdv: basic dataset")
 
 rcdv_enc <- rcdv %>% select(-recid)
