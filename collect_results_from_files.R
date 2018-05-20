@@ -52,15 +52,29 @@ for (exp in exps) {
   }
 }
 
-# set up the factor vars
-main_results$instance_id <- factor(main_results$instance_id)
-main_results$result_set <- ifelse(main_results$result_set == "greedy_prec", "CHIPS", main_results$result_set)
-main_results$datasetname <- gsub("\\_samp", "", main_results$datasetname)
-main_results$datasetname <- gsub("\\_small", "", main_results$datasetname)
-main_results$datasetname <- gsub("\\_tiny", "", main_results$datasetname)
-main_results$result_set <- factor(main_results$result_set)
-main_results$pred.class <- factor(main_results$pred.class)
-main_results$pred.class.label <- factor(main_results$pred.class.label)
-main_results$target.class <- factor(main_results$target.class)
-main_results$target.class.label <- factor(main_results$target.class.label)
-main_results$random_state <- factor(main_results$random_state)
+# tidy up
+main_results <- within(main_results, {
+  instance_id <- factor(instance_id)
+  result_set <- ifelse(result_set == "greedy_prec", "CHIPS", result_set)
+  rset_supp <- ifelse(result_set == "CHIPS", paste0("CHIPS_", support), result_set)
+  
+  result_set <- factor(result_set)
+  rset_supp <- factor(rset_supp)
+  
+  # tidy names
+  datasetname <- gsub("\\_samp", "", datasetname)
+  datasetname <- gsub("\\_small", "", datasetname)
+  datasetname <- gsub("\\_tiny", "", datasetname)
+  datasetname <- factor(datasetname)
+  pred.class <- factor(pred.class)
+  pred.class.label <- factor(pred.class.label)
+  target.class <- factor(target.class)
+  target.class.label <- factor(target.class.label)
+  random_state <- factor(random_state)
+  
+})
+
+main_results[main_results$result_set == "anchors", c("majority.vote.share", "support", "alpha_paths", "alpha_scores")] <- NA
+
+
+names(main_results) <- gsub("total.coverage.tt.", "test_covx", gsub("precision.tt.", "test_cons", names(main_results)))
