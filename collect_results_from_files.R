@@ -1,6 +1,7 @@
 source("dirs.R")
-dir(resultsfilesdir)
+library(xlsx)
 
+# main results collection
 exps <- c("adult_small_samp_pickles"
           , "bankmark_samp_pickles"
           , "car_pickles"
@@ -77,4 +78,23 @@ main_results <- within(main_results, {
 main_results[main_results$result_set == "anchors", c("majority.vote.share", "support", "alpha_paths", "alpha_scores")] <- NA
 
 
-names(main_results) <- gsub("total.coverage.tt.", "test_covx", gsub("precision.tt.", "test_cons", names(main_results)))
+names(main_results) <- gsub("total.coverage", "excl.cov", gsub("precision", "stability", names(main_results)))
+
+# results timings
+time_results <- read.xlsx(normalizePath(file.path(resfilesdir, "base model stats.xlsx"))
+          , sheetIndex = 1)
+
+time_results <- within(time_results, {
+  datasetname <- factor(datasetname)
+  randst <- factor(randst)
+})
+
+# support timings
+support_results <- read.xlsx(normalizePath(file.path(resfilesdir, "support sensitivity.xlsx"))
+                          , sheetIndex = 1)
+
+support_results <- within(support_results, {
+  datasetname <- factor(datasetname)
+})
+
+    
