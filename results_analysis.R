@@ -162,6 +162,34 @@ for (d in seq_along(datasets)) {
   
 }
 
+n_samples <- table(analysis$datasetname)/3
+excl.cov.tt.stats <- cbind(excl.cov.tt.stats
+                            , N = as.vector(n_samples[s0.02.stats$dataset]))
+
+s0.02.stats <- excl.cov.tt.stats[,c(1,2,3,4,11,6)]
+names(s0.02.stats) <- c("dataset"
+                        , "anchors"
+                        , "CHIRPS"
+                        , "diff"
+                        , "N"
+                        , "p.val")
+
+stargazer(s0.02.stats
+          , summary = FALSE
+          , rownames = FALSE)
+
+s0.05.stats <- excl.cov.tt.stats[,c(1,2,7,8,11,10)]
+names(s0.05.stats) <- c("dataset"
+                        , "anchors"
+                        , "CHIRPS"
+                        , "diff"
+                        , "N"
+                        , "p.val")
+
+stargazer(s0.05.stats
+          , summary = FALSE
+          , rownames = FALSE)
+
 # support results
 analysis_supp <- support_results %>%
   select(datasetname, time.per.ex.0.01
