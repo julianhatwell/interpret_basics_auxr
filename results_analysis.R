@@ -6,12 +6,14 @@ library(tidyr)
 library(car)
 library(lme4)
 library(stargazer)
-
+library(tikzDevice)
+library(lmomco)
+library(bootstrap)
 
 analysis <- with(main_results
                 , main_results[
                   target_prec == 0.95 &
-                    random_state == 123 & # :127 # == 123
+                    random_state == 123 &
                     (
                     result_set == "anchors" | 
                       (
@@ -21,6 +23,23 @@ analysis <- with(main_results
                       )
                     )
                 , ])
+
+datasets <- unique(analysis$datasetname)
+
+
+analysis_allrand <- with(main_results
+                 , main_results[
+                   target_prec == 0.95 &
+                     (
+                       result_set == "anchors" | 
+                         (
+                           support %in% c(0.02, 0.05) & # check when comparing support
+                             alpha_paths == 0.5 & 
+                             alpha_scores == 0.75 
+                         )
+                     )
+                   , ])
+
 
 xyplot(stability.tt. ~ excl.cov.tt. | datasetname * rset_supp
       , alpha = 0.1
@@ -48,7 +67,6 @@ stability.tt.stats <- data.frame(
   , wlxac5p = rep(NA, length(datasets))
 )
 
-datasets <- unique(analysis$datasetname)
 for (d in seq_along(datasets)) {
 
   stability.tt.wide <- filter(analysis, datasetname == datasets[d]) %>%
@@ -190,6 +208,109 @@ stargazer(s0.05.stats
           , summary = FALSE
           , rownames = FALSE)
 
+# aggregated
+stability_means <- with(analysis_allrand, tapply(stability.tt.
+                              , list(instance_id, random_state, rset_supp, datasetname)
+                              , FUN=mean))
+stability.tt.means <- data.frame(randst = 1:5)
+stability.tt.means <- cbind(stability.tt.means, matrix(NA, nrow = 5, ncol = 9))
+names(stability.tt.means) = c("fold", as.character(datasets))
+
+# aggregate for supp 0.02
+for (iid in 1:5) {
+  for (d in seq_along(datasets)) {
+    stability.tt.wide <- filter(analysis_allrand, datasetname == datasets[d] & random_state == iid + 122) %>%
+      select(instance_id, rset_supp, stability.tt.) %>%
+      spread(rset_supp, stability.tt.)
+    
+    stability.tt.means[[iid, as.character(datasets[d])]] <- t.test(
+      stability.tt.wide[, "CHIPS_0.02"]
+     , stability.tt.wide[, "anchors"]
+     , paired=TRUE)$estimate
+  }
+}
+
+res <- sapply(select(stability.tt.means, -1), t.test)
+
+diff2 <- as.numeric(unlist(res["estimate", ]))
+p.value2 <- as.numeric(unlist(res["p.value", ]))
+
+# aggregate for supp 0.02
+for (iid in 1:5) {
+  for (d in seq_along(datasets)) {
+    stability.tt.wide <- filter(analysis_allrand, datasetname == datasets[d] & random_state == iid + 122) %>%
+      select(instance_id, rset_supp, stability.tt.) %>%
+      spread(rset_supp, stability.tt.)
+    
+    stability.tt.means[[iid, as.character(datasets[d])]] <- t.test(
+      stability.tt.wide[, "CHIPS_0.05"]
+      , stability.tt.wide[, "anchors"]
+      , paired=TRUE)$estimate
+  }
+}
+
+res <- sapply(select(stability.tt.means, -1), t.test)
+
+diff5 <- as.numeric(unlist(res["estimate", ]))
+p.value5 <- as.numeric(unlist(res["p.value", ]))
+
+df = rep(4, 9)
+stargazer(data.frame(datasets, diff2, p.value2, diff5, p.value5, df)
+          , summary = FALSE
+          , rownames = FALSE)
+
+
+excl.cov_means <- with(analysis_allrand, tapply(excl.cov.tt.
+                                                 , list(instance_id, random_state, rset_supp, datasetname)
+                                                 , FUN=mean))
+excl.cov.tt.means <- data.frame(randst = 1:5)
+excl.cov.tt.means <- cbind(excl.cov.tt.means, matrix(NA, nrow = 5, ncol = 9))
+names(excl.cov.tt.means) = c("fold", as.character(datasets))
+
+# aggregate for supp 0.02
+for (iid in 1:5) {
+  for (d in seq_along(datasets)) {
+    excl.cov.tt.wide <- filter(analysis_allrand, datasetname == datasets[d] & random_state == iid + 122) %>%
+      select(instance_id, rset_supp, excl.cov.tt.) %>%
+      spread(rset_supp, excl.cov.tt.)
+    
+    excl.cov.tt.means[[iid, as.character(datasets[d])]] <- t.test(
+      excl.cov.tt.wide[, "CHIPS_0.02"]
+      , excl.cov.tt.wide[, "anchors"]
+      , paired=TRUE)$estimate
+  }
+}
+
+res <- sapply(select(excl.cov.tt.means, -1), t.test)
+
+diff2 <- as.numeric(unlist(res["estimate", ]))
+p.value2 <- as.numeric(unlist(res["p.value", ]))
+
+# aggregate for supp 0.02
+for (iid in 1:5) {
+  for (d in seq_along(datasets)) {
+    excl.cov.tt.wide <- filter(analysis_allrand, datasetname == datasets[d] & random_state == iid + 122) %>%
+      select(instance_id, rset_supp, excl.cov.tt.) %>%
+      spread(rset_supp, excl.cov.tt.)
+    
+    excl.cov.tt.means[[iid, as.character(datasets[d])]] <- t.test(
+      excl.cov.tt.wide[, "CHIPS_0.05"]
+      , excl.cov.tt.wide[, "anchors"]
+      , paired=TRUE)$estimate
+  }
+}
+
+res <- sapply(select(excl.cov.tt.means, -1), t.test)
+
+diff5 <- as.numeric(unlist(res["estimate", ]))
+p.value5 <- as.numeric(unlist(res["p.value", ]))
+
+df = rep(4, 9)
+stargazer(data.frame(datasets, diff2, p.value2, diff5, p.value5, df)
+          , summary = FALSE
+          , rownames = FALSE)
+
+
 # support results
 analysis_supp <- support_results %>%
   select(datasetname, time.per.ex.0.01
@@ -208,15 +329,23 @@ analysis_supp <- within(analysis_supp, {
   time_per_exp[time_per_exp == 0] <- NA  
 })
 
-ggplot(aes(y = time_per_exp
+tikz(file = "time_support_gg.tikz", width = 3, height = 2)
+plot <- ggplot(aes(y = time_per_exp
            , x = support)
        , data = analysis_supp) +
-  geom_point(aes(colour = datasetname)) +
+  geom_point() +
   geom_smooth(method = "gam"
               , formula = y~x
               , method.args = list(family = "Gamma")
               ) +
+  labs(y = "Time per explanation\n(seconds)") +
+  theme(axis.text.x = element_text(size = rel(0.52))
+        , axis.text.y = element_text(size = rel(0.25))) +
   theme_bw()
+print(plot)
+dev.off()
+
+
 
 supp.null <- lmer(log(time_per_exp) ~ (1|datasetname)
       , data = analysis_supp
@@ -228,7 +357,6 @@ supp.model <- lmer(log(time_per_exp) ~ lg(support) +
 
 anova(supp.null, supp.model)
 summary(supp.model)
-
 
 
 # timing results
@@ -252,19 +380,101 @@ analysis_time <- time_results %>%
          , min_samples = min.samples) %>%
   gather(key = rset_supp, value = time_per_exp
          , anchors, CHIRPS_0.02, CHIRPS_0.05) %>%
-  mutate(rset_supp = factor(rset_supp)
+  mutate(datasetname = factor(tolower(datasetname))
+         , rset_supp = factor(rset_supp)
          , model_accuracy = c(anch_acc, CHIRPS_acc, CHIRPS_acc)
          , model_kappa = c(anch_ck, CHIRPS_ck, CHIRPS_ck)
          , log_time_per_exp = log(time_per_exp)) %>%
   filter(precis.thresh == 0.95) %>%
   select(-precis.thresh)
 
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+rf_hparams <- sapply(analysis_time[, c("max_depth", "min_samples", "n_trees")]
+       , function(x) {tapply(x, analysis_time$datasetname, Mode)})
+
+stargazer(rf_hparams)
+
 densityplot(~time_per_exp, data = analysis_time)
-densityplot(~time_per_exp, data = analysis_time)
+densityplot(~log_time_per_exp, data = analysis_time)
+
+
+timings <- select(analysis_time, datasetname, rset_supp, randst, log_time_per_exp) %>%
+  spread(key = datasetname, value = log_time_per_exp)
+
+timing_means <- t(with(timings
+     , sapply(select(timings, -(1:2))
+              , function(x) {tapply(x, list(rset_supp), FUN = mean)})))
+
+timing_sds <- t(with(timings
+     , sapply(select(timings, -(1:2))
+              , function(x) {tapply(x, list(rset_supp), FUN = sd)})))
+
+timing_lower <- data.frame(exp(timing_means - timing_sds)) %>%
+  mutate(dataset = as.character(datasets)) %>%
+  gather(key = rset_supp, value = time_per_exp_lwr, -dataset)
+
+timing_upper <- data.frame(exp(timing_means + timing_sds)) %>%
+  mutate(dataset = as.character(datasets)) %>%
+  gather(key = rset_supp, value = time_per_exp_upr, -dataset)
+
+timing_means <- data.frame(exp(timing_means)) %>%
+  mutate(dataset = as.character(datasets)) %>%
+  gather(key = rset_supp, value = time_per_exp, -dataset)
+
+timing_means <- merge(timing_means, merge(timing_lower, timing_upper))
+
+ggplot(data = timing_means
+       , aes(y = time_per_exp
+             , ymin = time_per_exp_lwr
+             , ymax = time_per_exp_upr
+             , x = dataset
+             , colour = rset_supp
+             , linetype = rset_supp)) +
+  geom_pointrange(position = position_dodge(width = 0.5)
+                , stat = "identity"
+                , size = 1) +
+  #geom_point(aes(y = time_per_exp), position = position_dodge(0.9)) +
+  labs(y = "Time per explanation\n(seconds)") +
+  theme(axis.text.x = element_text(size = rel(0.52), angle=30, vjust = 0.5)
+        , axis.text.y = element_text(size = rel(0.25))) +
+  scale_color_grey() +
+  theme_bw()
+  
+
+
+timing_harm <- t(with(timings
+    , sapply(select(timings, -(1:2))
+             , function(x) {tapply(x, list(rset_supp), FUN = harmonic.mean)})))
+timing_harm <- as.data.frame(matrix(sapply(timing_harm, function(x) {x[[1]]}), ncol = 3)
+                             , row.names = as.character(datasets))
+names(timing_harm) <- c("anchors", "CHIRPS_0.02", "CHIRPS_0.05")
+
+timing_harmsd <- as.data.frame(matrix(NA, nrow = 9, ncol = 3)
+                               , row.names = as.character(datasets))
+names(timing_harmsd) <- c("anchors", "CHIRPS_0.02", "CHIRPS_0.05")
+
+for (d in seq_along(datasets)) {
+  for(rs in unique(analysis_time$rset_supp)) {
+    
+    
+    timing_harmsd[d, rs] <- with(analysis_time
+                            , jackknife(time_per_exp[datasetname == as.character(datasets[d]) &
+                                          rset_supp == rs]
+                                       , theta = function(x) {
+                                                 harmonic.mean(x)[[1]]
+                                         }))[[1]]
+  }
+}
 
 time_aov_null <- aov(log_time_per_exp ~ datasetname, data = analysis_time)
 time_aov_1 <- aov(log_time_per_exp ~ rset_supp * datasetname, data = analysis_time)
-time_aov2 <- aov(log_time_per_exp ~ rset_supp * datasetname * model_kappa, data = analysis_time)
+time_aov_2 <- aov(log_time_per_exp ~ rset_supp * datasetname * model_kappa, data = analysis_time)
+
+
 
 time.null <- lmer(log_time_per_exp ~ 
                      (1 + 1|datasetname)
@@ -343,7 +553,12 @@ time.model2 <- glmer(time_per_exp ~
                       (1 + rset_supp|datasetname)
                     
                     , data = analysis_time
-                    , family = "Gamma")
+                    , family = "Gamma"
+                    , control = glmerControl(optimizer="bobyqa")
+                    , start = list(fixef = c(0.37467
+                                   , -0.02748
+                                   , 0.54133))
+                    )
 
 plot(time.model2)
 summary(time.model2)
@@ -454,3 +669,229 @@ plot(precdiff.model2)
 anova(precdiff.model, precdiff.model2)
 anova(precdiff.null, precdiff.model2)
 anova(precdiff.null, precdiff.model, precdiff.model2)
+
+
+#rule lengths
+dataset <- analysis[analysis$datasetname == "cardiotography", ]
+
+longest_rule <- max(dataset$rule.length)
+
+tab <- table(dataset$rule.length)
+dimnames(tab)[[1]] <- as.character(0:(longest_rule - 1))
+
+plot(goodfit(tab, type = "poisson"), shade = TRUE)
+plot(goodfit(tab, type = "nbinomial"), shade = TRUE)
+
+fit <- as.data.frame(tab, stringsAsFactors = FALSE)
+colnames(fit) <- c("rule.length", "freq")
+fit$rule.length <- as.integer(fit$rule.length)
+all_length <- data.frame(rule.length = 0:(longest_rule-1))
+fit <- left_join(all_length, fit, by = "rule.length")
+fit$freq <- ifelse(is.na(fit$freq), 0, fit$freq)
+
+(lambda <- weighted.mean(as.numeric(fit$rule.length), w = fit$freq))
+
+phat <- dpois(0 : (longest_rule-1), lambda = 2)
+exp <- sum(fit$freq) * phat
+chisq <- (fit$freq - exp)^2 / exp
+
+GOF <- data.frame(fit, phat, exp, chisq)
+GOF
+
+sum(chisq)  # chi-square value
+pchisq(sum(chisq), df = nrow(tab) - 2, lower.tail = FALSE)
+summary(goodfit(GOF[, 2:1], type="nbinomial"))
+summary(goodfit(GOF[, 2:1], type="poisson"))
+rootogram(goodfit(GOF[, 2:1], type="nbinomial"), shade = TRUE)
+
+
+
+dataset <- analysis[analysis$datasetname == "cardiotography", ]
+longest_rule <- max(dataset$rule.length)
+
+
+tabanch <- with(dataset
+     , table(rule.length[rset_supp == "anchors"]))
+tabch2 <- with(dataset
+             , table(rule.length[rset_supp == "CHIRPS_0.02"]))
+tabch5 <- with(dataset
+               , table(rule.length[rset_supp == "CHIRPS_0.05"]))
+
+anch <- as.data.frame(tabanch, stringsAsFactors = FALSE)
+names(anch) <- c("rule.length", "Freq")
+anch$rule.length <- as.integer(anch$rule.length)
+
+ch2 <- as.data.frame(tabch2, stringsAsFactors = FALSE)
+names(ch2) <- c("rule.length", "Freq")
+ch2$rule.length <- as.integer(ch2$rule.length)
+ch5 <- as.data.frame(tabch5, stringsAsFactors = FALSE)
+names(ch5) <- c("rule.length", "Freq")
+ch5$rule.length <- as.integer(ch5$rule.length)
+
+
+all_length <- data.frame(rule.length = 0:(longest_rule))
+
+
+fit <- left_join(all_length, anch, by = "rule.length") %>%
+  left_join(ch2, by = "rule.length", suffix = c("anchors", "")) %>%
+  left_join(ch5, by = "rule.length", suffix = c("CHIRPS_0.02", "CHIRPS_0.05"))
+names(fit) <- gsub("Freq", "", names(fit))
+fit <- as.data.frame(sapply(fit, function(x) {
+  ifelse(is.na(x), 0, x)
+}))
+
+fit_gather <- gather(fit, rset_supp, Freq, -1)
+
+rl <- matrix(rep(NA, 6), nrow = 2)
+dimnames(rl) <- list(c("mean", "sd")
+        , c("anchors", "CHIRPS_0.02", "CHIRPS_0.05"))
+for (rs in c("anchors", "CHIRPS_0.02", "CHIRPS_0.05")) {
+  freqs <- expand.dft(fit_gather[fit_gather$rset_supp == rs, c(1, 3)])
+  
+  rl[,rs] <- apply(freqs, 2
+         , FUN = function(z) c(mean = mean(z), var = var(z)))
+}
+rl
+
+sapply(fit, function(x) {
+  x <- data.frame(Freq = x)
+  
+})
+
+
+
+expand.dft(fit_gather)
+
+sapply(fit[, 2:4], weighted.mean, w = fit$rule.length)
+densityplot(~anchors+CHIRPS_0.02+CHIRPS_0.05, data = fit)
+
+summary(glmer(rule.length~rset_supp +
+                (1|datasetname)
+              , data = analysis_allrand
+              , family = negative.binomial(2)))
+
+# rule length analysis
+# source("collect_results_from_files.R")
+source("analysis_rules_general_setup.R")
+
+# to compare with python results
+adult$instance_id <- as.integer(rownames(adult)) - 1
+adult_enc$instance_id <- as.integer(rownames(adult_enc)) - 1
+
+dataset_rl <- c("adult", "lending", "rcdv")
+ds_rl <- dataset_rl[1]
+
+analysis_rl <- with(main_results
+                 , main_results[
+                   datasetname == ds_rl &
+                   target_prec == 0.95 &
+                     random_state == 123 &
+                     (
+                       result_set == "anchors" | 
+                         (
+                           support == 0.05 & # check when comparing support
+                             alpha_paths == 0.5 & 
+                             alpha_scores == 0.75 
+                         )
+                     )
+                   , c("datasetname", "rset_supp"
+                       , "instance_id", "pretty.rule"
+                       , "stability.tt.", "excl.cov.tt.")])
+
+rl_cov <- analysis_rl %>%
+  dplyr::select(rset_supp, instance_id, excl.cov.tt.) %>%
+  spread(rset_supp, excl.cov.tt.) %>%
+  transmute(instance_id = instance_id
+            , cov_diff = CHIRPS_0.05 - anchors)
+rl_cov <- rl_cov[order(-rl_cov$cov_diff), ]
+
+rl_stab <- analysis_rl %>%
+  dplyr::select(rset_supp, instance_id, stability.tt.) %>%
+  spread(rset_supp, stability.tt.) %>%
+  transmute(instance_id = instance_id
+            , stab_diff = CHIRPS_0.05 - anchors)
+
+rl_rule <- analysis_rl %>%
+  dplyr::select(rset_supp, instance_id, pretty.rule) %>%
+  spread(rset_supp, pretty.rule) %>%
+  dplyr::select(instance_id ,CHIRPS_0.05, anchors)
+
+rl_master <- left_join(left_join(rl_cov, rl_stab), rl_rule) %>%
+  mutate(instance_id = as.integer(as.vector(instance_id)))
+
+# get the test set only
+adult_test <- adult[adult$instance_id %in% rl_master$instance_id, ]
+adult_enc_test <- adult_enc[adult_enc$instance_id %in% rl_master$instance_id, ]
+
+
+head(rl_master)
+tail(rl_cov)
+median(rl_cov$cov_diff)
+rl_master[rl_master$cov_diff == median(rl_master$cov_diff), "instance_id"]
+rl_master[rl_master$cov_diff < 0.005 & rl_master$cov_diff > -0.005, "instance_id"]
+
+rl_rule[rl_rule$instance_id %in% head(head(rl_master$instance_id)), ]
+
+
+
+
+# rule 33
+with(adult_test, 
+     round(prop.table(table(adult_test[
+       instance_id != 33 &
+       hoursperweek > 45.00 &
+         relationship == "Husband" &
+         maritalstatus == "Married-civ-spouse" &
+         sex == "Male" &
+         10.00 < educationnum &
+         educationnum <= 12.00 &
+         28.00 < age &
+         age <= 38.00 &
+         education == "Assoc-acdm" &
+         occupation == "Prof-specialty"
+       , "income"])), 4))
+
+with(adult_test, 
+     adult_test[
+       instance_id != 33 &
+       hoursperweek > 45.00 &
+         relationship == "Husband" &
+         maritalstatus == "Married-civ-spouse" &
+         sex == "Male" &
+         10.00 < educationnum &
+         educationnum <= 12.00 &
+         28.00 < age &
+         age <= 38.00 &
+         education == "Assoc-acdm" &
+         occupation == "Prof-specialty"
+       , ])
+
+with(adult_enc_test, 
+     round(prop.table(table(
+       adult_enc_test[
+         instance_id != 33 &
+           capitalgain <= 4389.39109 &
+           education_Doctorate == FALSE &
+           hoursperweek <= 66.26667 &
+           capitalloss <= 1818.75
+         , "income"])), 4))
+
+with(adult_enc_test, 
+     adult_enc_test[
+       #instance_id != 33 &
+       capitalgain <= 4389.39109 &
+         education_Doctorate == FALSE &
+         hoursperweek <= 66.26667 &
+         capitalloss <= 1818.75
+       , ])
+
+
+
+rules_of_interest <- data.frame(
+  datasetname = character(0)
+  , anchors_cov = numeric(0)
+  , CHIRPS_0.05_cov = numeric(0)
+  , CHIRPS_0.05_rule = character(0)
+  , anchors_rule = character(0)
+)
+
