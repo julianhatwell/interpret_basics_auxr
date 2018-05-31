@@ -236,6 +236,7 @@ plot <- ggplot(aes(y = time_per_exp
 print(plot)
 dev.off()
 
+# time analysis
 # rearrange the data
 analysis_time <- time_results %>%
   select(-mtry, -sp.0.02.timing, precis.thresh
@@ -309,16 +310,22 @@ plot <- ggplot(data = timing_means
   labs(y = "Time per explanation\n(seconds)"
        , colour = "Method"
        , linetype = "Method") +
-  scale_color_grey(start = 0.7, end = 0.3) +
+  scale_color_grey(start = 0.6, end = 0.3) +
   theme_bw() +
   theme(axis.title = element_text(size = rel(0.75))
       , axis.text.x = element_text(angle = -20, vjust = 0.85)
       , legend.title = element_blank()
       , legend.text = element_text(size = rel(0.5))
+      , panel.grid.major = element_blank()
+      , panel.grid.minor = element_blank()
       , legend.position = "top")
 
 print(plot)
 dev.off()
+
+time_aov_1 <- aov(log_time_per_exp ~ rset_supp * datasetname, data = analysis_time)
+summary(time_aov_1)
+
 
 time.model2 <- glmer(time_per_exp ~ 
                        rset_supp + 
@@ -335,26 +342,39 @@ time.model2 <- glmer(time_per_exp ~
 plot(time.model2)
 summary(time.model2)
 
+
+
+
 y_haty <- data.frame(actual = analysis_time$log_time_per_exp
                      , fitted = log(predict(time.model2, type = "response"))
                      , rset_supp = analysis_time$rset_supp
                      , dataset = analysis_time$datasetname)
 
-tikz(file = "time_model_gg.tikz", width = 3, height = 2)
+# plotting correction
+# plotting correction
+y_haty$rset_supp <- gsub("a", "A", gsub("_", " ", y_haty$rset_supp))
+
+
+tikz(file = "time_model_gg.tikz", width = 3, height = 3)
 plot <- ggplot(data = y_haty
                , aes(x = actual, y = fitted
                      , colour = rset_supp
                      , shape = rset_supp)
                ) +
   scale_shape_manual(values = c(1, 3, 4)) +
-  scale_color_grey(start = 0.5, end = 0.3) +
-  geom_point(size = 2.5) +
+  scale_color_grey(start = 0.7, end = 0.4) +
+  geom_point(size = 1) +
   theme_bw() +
   labs(x = "Actual time per explanation\n(log seconds)"
        , y = "Fitted time per explanation\n(log seconds)"
        , colour = "Method"
        , shape = "Method") +
-  theme(axis.title = element_text(size = rel(0.75)))
+  theme(axis.title = element_text(size = rel(0.75))
+        , legend.title = element_blank()
+        , legend.text = element_text(size = rel(0.5))
+        , panel.grid.major = element_blank()
+        , panel.grid.minor = element_blank()
+        , legend.position = "top")
 
 print(plot)
 dev.off()
