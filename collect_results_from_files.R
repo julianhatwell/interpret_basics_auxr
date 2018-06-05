@@ -17,7 +17,7 @@ for (exp in exps) {
   filenames <- grep("pr\\_0\\.9[59]?\\.csv", dir(normalizePath(file.path(resfilesdir, exp))), value = TRUE)
   for (filename in filenames) {
     datasetname <- sub("\\_pickles", "", exp)
-    randst <- gregexpr("rnst\\_12[34567]", filename)
+    randst <- gregexpr("rnst\\_1[23][0-9]", filename)
     randst <- regmatches(filename, randst)[[1]]
     randst <- as.numeric(gsub("rnst\\_", "", randst))
     supp <- gregexpr("sp\\_0.[0-9]{1,2}", filename)
@@ -56,8 +56,8 @@ for (exp in exps) {
 # tidy up
 main_results <- within(main_results, {
   instance_id <- factor(instance_id)
-  result_set <- ifelse(result_set == "greedy_prec", "CHIPS", result_set)
-  rset_supp <- ifelse(result_set == "CHIPS", paste0("CHIPS_", support), result_set)
+  result_set <- ifelse(result_set == "greedy_prec", "CHIRPS", result_set)
+  rset_supp <- ifelse(result_set == "CHIRPS", paste0("CHIRPS_", support), result_set)
   
   result_set <- factor(result_set)
   rset_supp <- factor(rset_supp)
@@ -71,8 +71,9 @@ main_results <- within(main_results, {
   pred.class.label <- factor(pred.class.label)
   target.class <- factor(target.class)
   target.class.label <- factor(target.class.label)
+  machine <- factor(ifelse(random_state < 128, "campus", "surface"))
   random_state <- factor(random_state)
-  
+
 })
 
 main_results[main_results$result_set == "anchors", c("majority.vote.share", "support", "alpha_paths", "alpha_scores")] <- NA
