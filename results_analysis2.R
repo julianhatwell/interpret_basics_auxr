@@ -9,6 +9,7 @@ library(stargazer)
 analysis_allrand <- with(main_results
                          , main_results[
                            target_prec == 0.95 &
+                             random_state %in% 123:127 &
                              (
                                result_set == "anchors" | 
                                  (
@@ -22,6 +23,9 @@ analysis_allrand <- with(main_results
 datasets <- unique(analysis_allrand$datasetname)
 
 # test stats
+measures <- c("stability.tt.", "excl.cov.tt.", "rule.length")
+measure <- measures[3]
+
 tt.stats <- data.frame(
   dataset = rep(NA, length(datasets))
   , ma = rep(NA, length(datasets))
@@ -36,9 +40,6 @@ tt.stats <- data.frame(
   , wlxac5p = rep(NA, length(datasets))
   , N = rep(NA, length(datasets))
 )
-
-measures <- c("stability.tt.", "excl.cov.tt.", "rule.length")
-measure <- measures[3]
 
 for (d in seq_along(datasets)) {
   
@@ -99,12 +100,12 @@ tt.means <- data.frame(randst = 123:127)
 tt.means <- cbind(tt.means, matrix(NA, nrow = 5, ncol = 9))
 names(tt.means) = c("fold", as.character(datasets))
 
-tt.means <- rbind(tt.means, tt.means) # double up
-tt.means <- rbind(tt.means, tt.means) # and again
+tt.means <- rbind(tt.means, tt.means, tt.means) # triple up
+tt.means <- rbind(tt.means, tt.means) # and double up
 
-tt.means$measure <- rep(measures, each = 10)
+tt.means$measure <- rep(measures, each = 5)
 methods <- c("CHIRPS_0.02", "CHIRPS_0.05")
-tt.means$method <- rep(rep(methods, each = 5), 2)
+tt.means$method <- rep(rep(methods, each = 5), 3)
 
 for (iid in 1:5) {
   for (d in seq_along(datasets)) {
@@ -126,9 +127,12 @@ for (iid in 1:5) {
     }
   }
 }
+tt.means <- within(tt.means
+       , machine <- factor(ifelse(fold < 128, "campus", "surface")))
+
 
 # do one stargazer per measure
-measure <- measures[2]
+measure <- measures[]
 tt.ttest <- select(tt.means, 1, 11:12, 2:10)
 t.test2 <- sapply(filter(tt.ttest, measure == !! measure
                          , method == methods[1]) %>%
@@ -146,7 +150,7 @@ p.value2 <- as.numeric(unlist(t.test2["p.value", ]))
 diff5 <- as.numeric(unlist(t.test5["estimate", ]))
 p.value5 <- as.numeric(unlist(t.test5["p.value", ]))
 
-df = rep(4, 9)
+df = rep(9, 9)
 agg.method.stats <- data.frame(datasets, diff2, p.value2, diff5, p.value5, df)
 stargazer(agg.method.stats
           , summary = FALSE
@@ -167,7 +171,7 @@ plot <- ggplot(data = tt.means.plotting[tt.means.plotting$measure == measures[1]
            , fill = "#999999"
            , width = 0.05) +
   geom_point(position = position_dodge(width = 0.5), size = 0.5) +
-  scale_color_grey(start = 0.2, end = 0.3) +
+  scale_color_grey(start = 0.3, end = 0.3) +
   facet_grid(method~.) +
   labs(y = "Mean paired differences") +
   theme_bw() +
@@ -189,7 +193,7 @@ plot <- ggplot(data = tt.means.plotting[tt.means.plotting$measure == measures[2]
            , fill = "#999999"
            , width = 0.05) +
   geom_point(position = position_dodge(width = 0.5), size = 0.5) +
-  scale_color_grey(start = 0.2, end = 0.3) +
+  scale_color_grey(start = 0.3, end = 0.3) +
   facet_grid(method~.) +
   labs(y = "Mean paired differences") +
   theme_bw() +
@@ -201,6 +205,27 @@ plot <- ggplot(data = tt.means.plotting[tt.means.plotting$measure == measures[2]
 print(plot)
 dev.off()
 
+tikz(file = "rule_length_diff_gg.tikz", width = 3, height = 3)
+plot <- ggplot(data = tt.means.plotting[tt.means.plotting$measure == measures[3], ]
+               , aes(y = paired.mean.diff
+                     , x = dataset
+                     , colour = factor(fold))) +
+  geom_bar(stat = "identity"
+           , position = position_dodge(width = 0.5)
+           , fill = "#999999"
+           , width = 0.05) +
+  geom_point(position = position_dodge(width = 0.5), size = 0.5) +
+  scale_color_grey(start = 0.3, end = 0.3) +
+  facet_grid(method~.) +
+  labs(y = "Mean paired differences") +
+  theme_bw() +
+  theme(legend.position = "none"
+        , axis.title = element_text(size = rel(0.75))
+        , axis.text.x = element_text(angle = -20, vjust = 0.85)
+        , strip.background = element_rect(colour = "black", fill = "white"))
+
+print(plot)
+dev.off()
 
 # support results
 analysis_supp <- support_results %>%
@@ -220,7 +245,7 @@ analysis_supp <- within(analysis_supp, {
   time_per_exp[time_per_exp == 0] <- NA  
 })
 
-tikz(file = "time_support_gg.tikz", width = 3, height = 2)
+tikz(file = "time_support_gg.tikz", width = 3, height = 1.5)
 plot <- ggplot(aes(y = time_per_exp
                    , x = support)
                , data = analysis_supp) +
@@ -239,6 +264,7 @@ dev.off()
 # time analysis
 # rearrange the data
 analysis_time <- time_results %>%
+  filter(randst %in% 123:127) %>%
   select(-mtry, -sp.0.02.timing, precis.thresh
          , -sp.0.05.timing, -time..anch.
          , -acc..tt., -acc..anch.
@@ -296,7 +322,7 @@ timing_means <- merge(timing_means, merge(timing_lower, timing_upper))
 # plotting correction
 timing_means$rset_supp <- gsub("a", "A", gsub("_", " ", timing_means$rset_supp))
 
-tikz(file = "time_compare_gg.tikz", width = 3, height = 3)
+tikz(file = "time_compare_gg.tikz", width = 3, height = 2)
 plot <- ggplot(data = timing_means
        , aes(y = time_per_exp
              , ymin = time_per_exp_lwr
@@ -306,24 +332,30 @@ plot <- ggplot(data = timing_means
              , linetype = rset_supp)) +
   geom_pointrange(position = position_dodge(width = 0.25)
                   , stat = "identity"
-                  , size = 0.25) +
+                  , size = 0.1) +
   labs(y = "Time per explanation\n(seconds)"
        , colour = "Method"
        , linetype = "Method") +
   scale_color_grey(start = 0.6, end = 0.3) +
   theme_bw() +
   theme(axis.title = element_text(size = rel(0.75))
-      , axis.text.x = element_text(angle = -20, vjust = 0.85)
+      , axis.title.x = element_text(vjust = 0)
+      , axis.text.x = element_text(angle = -20, vjust = 0.85
+                                   , margin= margin(b=-10))
+      , axis.text.y = element_text(margin= margin(l=-8))
       , legend.title = element_blank()
       , legend.text = element_text(size = rel(0.5))
-      , panel.grid.major = element_blank()
-      , panel.grid.minor = element_blank()
+      , legend.box.spacing = unit(0, "pt")
+      , panel.grid = element_blank()
       , legend.position = "top")
 
 print(plot)
 dev.off()
 
 time_aov_1 <- aov(log_time_per_exp ~ rset_supp * datasetname, data = analysis_time)
+summary(time_aov_1)
+
+time_aov_1 <- aov(log_time_per_exp ~ machine * rset_supp * datasetname, data = analysis_time)
 summary(time_aov_1)
 
 
@@ -334,10 +366,17 @@ time.model2 <- glmer(time_per_exp ~
                      , data = analysis_time
                      , family = "Gamma"
                      , control = glmerControl(optimizer="bobyqa")
-                     , start = list(fixef = c(0.37467
-                                              , -0.02748
-                                              , 0.54133))
 )
+
+time.model2 <- glmer(time_per_exp ~ machine +
+                       rset_supp + 
+                       (1 + rset_supp|datasetname)
+                     
+                     , data = analysis_time
+                     , family = "Gamma"
+                     , control = glmerControl(optimizer="bobyqa")
+)
+
 
 plot(time.model2)
 summary(time.model2)
@@ -355,7 +394,7 @@ y_haty <- data.frame(actual = analysis_time$log_time_per_exp
 y_haty$rset_supp <- gsub("a", "A", gsub("_", " ", y_haty$rset_supp))
 
 
-tikz(file = "time_model_gg.tikz", width = 3, height = 3)
+tikz(file = "time_model_gg.tikz", width = 3, height = 2)
 plot <- ggplot(data = y_haty
                , aes(x = actual, y = fitted
                      , colour = rset_supp
@@ -372,8 +411,10 @@ plot <- ggplot(data = y_haty
   theme(axis.title = element_text(size = rel(0.75))
         , legend.title = element_blank()
         , legend.text = element_text(size = rel(0.5))
-        , panel.grid.major = element_blank()
-        , panel.grid.minor = element_blank()
+        , axis.text.y = element_text(margin= margin(l=-5))
+        , axis.text.x = element_text(margin= margin(b=-5))
+        , legend.box.spacing = unit(0, "pt")
+        , panel.grid = element_blank()
         , legend.position = "top")
 
 print(plot)
