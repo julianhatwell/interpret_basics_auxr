@@ -14,12 +14,17 @@ unpretty <- function(r) {
   strsplit(r, " AND ")
 }
 
+with(main_results, main_results[datasetname == "adult" & addt == 0, "instance_id"])
+with(main_results, main_results[datasetname == "adult" & instance_id == 606, ])
+
+
+
+
+
 # one random state set
 analysis <- with(main_results
                  , main_results[
-                     # random_state == 123 &
-                       instance_id == 1037 &
-                       datasetname == "adult"
+                     datasetname == "adult"
                      , ])
 
 datasets <- unique(analysis$datasetname)
