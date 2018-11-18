@@ -37,6 +37,17 @@ p_count_corrected <- function(arr, classes) {
               , s_counts = sc))
 }
 
+entropy_corrected <- function(p, q) {
+  n <- length(p)
+  p_norm <- p/sum(p)
+  q_norm <- q/sum(q)
+  p_smooth <- runif(n)
+  q_smooth <- runif(n)
+  p_smoothed <- 0.01 * p_smooth + 0.99 * p_norm
+  q_smoothed <- 0.01 * q_smooth + 0.99 * q_norm
+  return(-sum(p_smoothed * log(q_smoothed/p_smoothed)))
+}
+
 evaluate <- function(prior_labels, post_idx, classes) {
   prior <- p_count_corrected(prior_labels, classes)
   
@@ -96,12 +107,128 @@ get_dataset_name <- function(x) {
   sub(".csv.gz", "", x)
 }
 
-whichRule <- function(learner, X) {
+# importing data
+data_dir <- "C:\\Users\\id126493\\Documents\\GitHub\\explain_te\\CHIRPS\\datafiles\\"
+project_dir <- "V:\\whiteboxing\\"
+
+class_cols <- c("income", "y"
+                , "acceptability"
+                , "NSP", "A16"
+                , "rating", "loan_status"
+                , "decision", "recid")
+
+data_files <- c("adult_small_samp.csv.gz", "bankmark_samp.csv.gz"
+                , "car.csv.gz", "cardio.csv.gz", "credit.csv.gz"
+                , "german.csv.gz" , "lending_tiny_samp.csv.gz"
+                , "nursery_samp.csv.gz", "rcdv_samp.csv.gz")
+
+datasets <- sapply(data_files, get_dataset_name)
+output_dirs <- paste0(project_dir, datasets, "\\")
+
+results_nrows <- length(random_states) * length(datasets)
+
+dataset <- character(results_nrows)
+n_instances <- integer(results_nrows)
+random_state <- integer(results_nrows)
+n_rules <- integer(results_nrows)
+n_rules_used <- integer(results_nrows)
+accuracy <- numeric(results_nrows)
+sd_accuracy <- numeric(results_nrows)
+fidelity <- numeric(results_nrows)
+sd_fidelity <- numeric(results_nrows)
+mean_rule_cascade <- numeric(results_nrows)
+mean_rulelen <- numeric(results_nrows)
+mean_pred_acc <- numeric(results_nrows)
+sd_rule_cascade <- numeric(results_nrows)
+sd_rulelen <- numeric(results_nrows)
+sd_pred_acc <- numeric(results_nrows)
+
+mean_coverage <- numeric(results_nrows)
+sd_coverage <- numeric(results_nrows)
+mean_xcoverage <- numeric(results_nrows)
+sd_xcoverage <- numeric(results_nrows)
+mean_proxy_precision <- numeric(results_nrows)
+sd_proxy_precision <- numeric(results_nrows)
+mean_proxy_stability <- numeric(results_nrows)
+sd_proxy_stability <- numeric(results_nrows)
+mean_proxy_recall <- numeric(results_nrows)
+sd_proxy_recall <- numeric(results_nrows)
+mean_proxy_f1 <- numeric(results_nrows)
+sd_proxy_f1 <- numeric(results_nrows)
+mean_proxy_accu <- numeric(results_nrows)
+sd_proxy_accu <- numeric(results_nrows)
+mean_proxy_lift <- numeric(results_nrows)
+sd_proxy_lift <- numeric(results_nrows)
+mean_forest_precision <- numeric(results_nrows)
+sd_forest_precision <- numeric(results_nrows)
+mean_forest_stability <- numeric(results_nrows)
+sd_forest_stability <- numeric(results_nrows)
+mean_forest_recall <- numeric(results_nrows)
+sd_forest_recall <- numeric(results_nrows)
+mean_forest_f1 <- numeric(results_nrows)
+sd_forest_f1 <- numeric(results_nrows)
+mean_forest_accu <- numeric(results_nrows)
+sd_forest_accu <- numeric(results_nrows)
+mean_forest_lift <- numeric(results_nrows)
+sd_forest_lift <- numeric(results_nrows)
+
+data_prep <- function(i) {
+  dat <- read.csv(gzfile(paste0(data_dir, data_files[i])))
+  train_idx <- read.csv(paste0(output_dirs[i], "train_index.csv"), header = FALSE)$V1 + 1
+  test_idx <<- read.csv(paste0(output_dirs[i], "test_index.csv"), header = FALSE)$V1 + 1
+  dat_train <<- dat[train_idx, ]
+  dat_test <<- dat[test_idx, ]
+  
+  n_test <<- length(test_idx)
+  
+  ds_container <<- list(
+    X_train = dat_train[, names(dat) != class_cols[i]],
+    y_train = dat_train[, class_cols[i]],
+    X_test = dat_test[, names(dat) != class_cols[i]],
+    y_test = dat_test[, class_cols[i]]
+  )
+  
+  classes <<- levels(ds_container$y_train)
+  if (is.null(classes)) classes <<- c(0, 1)
+  
+  fmla <<- as.formula(paste(class_cols[i], "~ ."))
+  
+  ntree <<- fromJSON(readLines(file(paste0(
+    output_dirs[i]
+    , "best_params_rndst_"
+    , random_states[i]
+    , ".json"))))$n_estimators
+}
+
+results_init <<- function(n_test) {
+  forest_vote_share <<- numeric(n_test)
+  prior <<- numeric(n_test)
+  coverage <<- numeric(n_test)
+  xcoverage <<- numeric(n_test)
+  proxy_precision <<- numeric(n_test)
+  proxy_stability <<- numeric(n_test)
+  proxy_counts <<- integer(n_test)
+  proxy_recall <<- numeric(n_test)
+  proxy_f1 <<- numeric(n_test)
+  proxy_accu <<- numeric(n_test)
+  proxy_lift <<- numeric(n_test)
+  proxy_kl_div <<- numeric(n_test)
+  forest_precision <<- numeric(n_test)
+  forest_stability <<- numeric(n_test)
+  forest_counts <<- integer(n_test)
+  forest_recall <<- numeric(n_test)
+  forest_f1 <<- numeric(n_test)
+  forest_accu <<- numeric(n_test)
+  forest_lift <<- numeric(n_test)
+  forest_kl_div <<- numeric(n_test)
+}
+
+whichRule_inTrees <- function(learner, X) {
   left_idx <- 1:nrow(X)
   rules_idx <- numeric(length(left_idx))
   for (i in 1:nrow(learner)) {
     match_idx <- eval(parse(text = paste("which(", learner[i, 
-                                                         "condition"], ")")))
+                                                           "condition"], ")")))
     match_idx <- intersect(left_idx, match_idx)
     rules_idx[match_idx] <- i
     left_idx <- setdiff(left_idx, match_idx)
@@ -109,10 +236,34 @@ whichRule <- function(learner, X) {
   return(rules_idx)
 }
 
+whichRule_sbrl <- function (model, tdata) 
+{
+  mat_data_feature <- get_data_feature_mat(tdata, model$featurenames)
+  mat_data_rules <- mat_data_feature %*% model$mat_feature_rule
+  mat_data_rules <- t(t(mat_data_rules) >= c(colSums(model$mat_feature_rule))) + 
+    0
+  nrules <- ncol(model$mat_feature_rule)
+  nsamples <- nrow(tdata)
+  mat_idx <- matrix(0, nrow = nsamples, ncol = nrules)
+  for (i in 1:(nrow(model$rs) - 1)) {
+    mat_idx[, model$rs$V1[i]] = i
+  }
+  mat_satisfy <- mat_data_rules * mat_idx
+  mat_caps <- as.matrix(apply(mat_satisfy, 1, function(x) ifelse(!identical(x[x > 
+                                                                                0], numeric(0)), min(x[x > 0]), NaN)))
+  mat_caps[is.na(mat_caps)] = nrow(model$rs)
+  
+  return(model$rs$V1[mat_caps])
+}
+
 which_class <- function(preds) {
   sapply(preds, function(p) {
     which(classes == p)
   })
+}
+
+penalise_bad_prediction <- function(mc, tc, value) {
+  return(ifelse(mc == tc, value, 0))
 }
 
 inTrees_benchmark <- function(forest, ds_container) {
@@ -127,28 +278,68 @@ inTrees_benchmark <- function(forest, ds_container) {
   learner_preds <- applyLearner(learner, ds_container$X_test)
   learner_label <- which_class(applyLearner(learner, ds_container$X_test))
   
-  rule_idx <- whichRule(learner, ds_container$X_test)
+  rule_idx <- whichRule_inTrees(learner, ds_container$X_test)
+  rl_ln <- sapply(gregexpr("&", learner[rule_idx,4]), function(x) {length(x)[[1]] + 1})
   return(list(label=learner_label
-              , rule_idx=rule_idx
+              , rule_idx=rule_idx # which rule applies to which instance
+              , rl_ln = rl_ln
+              , rule = learner[rule_idx, 4]
               , model=learner
-              , model_type="inTrees")) # which rule applies to which instance
+              , model_type="inTrees")) 
   
 }
 
-sbrl_benchmark <- function(ds_container) {
-  # transform for sbrl
-  label <- factor(ifelse(ds_container$y_train == "<=50K", 0, 1))
-  tdata <- ds_container$X_train
-  # discretise where necessary
-  for(cl in names(tdata)) {
-    if(class(tdata[[cl]]) != "factor") {
-      tdata[[cl]] <- binning(tdata[[cl]], method="quantile", ordered = FALSE)
+sbrl_data_prep <- function(dat) {
+  for(cl in names(dat)) {
+    if(class(dat[[cl]]) != "factor") {
+      dat[[cl]] <- binning(dat[[cl]], method="quantile", ordered = FALSE)
     }
   }
-  tdata <- cbind(tdata, label)
-  model <- sbrl(tdata, rule_minlen=1, rule_maxlen=1000, 
-                minsupport_pos=0.02, minsupport_neg=0.02, 
-                lambda=10.0, eta=2.5, nchain=10
-                )
-  return(model)
+  return(dat)
+}
+
+set_labels <- function(y_tr, zvl) {
+  factor(ifelse(y_tr == zvl, 0, 1)) # error if not in this format  
+}
+
+sbrl_benchmark <- function(ds_container, classes) {
+  # transform for sbrl
+  if (datasets[i] == "adult_small_samp") zero_val_label <- "<=50K"
+  if (datasets[i] == "bankmark_samp") zero_val_label <- "no"
+  if (datasets[i] == "car") zero_val_label <- "acc"
+  if (datasets[i] == "credit") zero_val_label <- "minus"
+  if (datasets[i] == "german") zero_val_label <- "bad"
+  if (datasets[i] == "lending_tiny_samp") zero_val_label <- "Charged Off"
+  
+  train_label <- set_labels(ds_container$y_train, zero_val_label)
+  test_label <- set_labels(ds_container$y_test, zero_val_label)
+  
+  train_data <- sbrl_data_prep(ds_container$X_train)
+  train_data <- cbind(train_data, label = train_label)
+  
+  test_data <- sbrl_data_prep(ds_container$X_test)
+  
+  model <- sbrl(tdata=train_data, rule_minlen=1, rule_maxlen=5, 
+                minsupport_pos=0.05, minsupport_neg=0.05,
+                lambda=10.0, eta=2.5, nchain=10)
+  
+  sbrl_label <- ifelse(predict(model, tdata=test_data)$V1 > 0.5, 1, 2)
+  model_accurate <- ifelse(sbrl_label == as.numeric(test_label), 1, 0)
+  rules_plus_default <- c(model$rulenames, "{default}") # format of returned rules. The = sign will help counting 
+  n_rules <- length(model$rulenames) + 1
+  rule_idx <- whichRule_sbrl(model, test_data)
+  rule_pos <- sapply(rule_idx, function(x) {which(model$rs$V1 == x)}) # create a positional index
+  
+  rule_idx <- ifelse(rule_idx == 0, n_rules, rule_idx) # makes rule extract easier
+  rl_ln <- sapply(gregexpr("=", rules_plus_default[rule_idx]), function(x) {ifelse(x[1] == -1, 0, length(x)[1])})
+  rule = rules_plus_default[rule_idx]
+  
+  return(list(label=sbrl_label
+              , rule_idx = rule_pos
+              , rl_ln = rl_ln
+              , unique_rules = length(model$rs$V1)
+              , rule = rule
+              , model = model
+              , model_accurate = model_accurate
+              , model_type="sbrl"))
 }
