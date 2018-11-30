@@ -105,9 +105,12 @@ for (i in seq_along(data_files)) {
     random_state[this_run] <- random_states[r]
     n_rules[this_run] <- benchmark$unique_rules
     n_rules_used[this_run] <- length(unique(benchmark$rule_idx))
-    acc <- mean(benchmark$model_accurate)
-    accuracy[this_run] <- acc
-    sd_accuracy[this_run] <- (acc/(1-acc))/length(benchmark$model_accurate) # binomial sd
+    f_perf <- mean(forest_label == as.numeric(ds_container$y_test))
+    forest_performance[this_run] <- f_perf
+    sd_forest_performance[this_run] <- (f_perf/(1-f_perf))/length(forest_label)
+    p_perf <- mean(benchmark$model_accurate)
+    proxy_performance[this_run] <- p_perf
+    sd_proxy_performance[this_run] <- (p_perf/(1-p_perf))/length(benchmark$model_accurate) # binomial sd
     fid <- mean(benchmark$label == forest_label)
     fidelity[this_run] <- fid
     sd_fidelity[this_run] <- (fid/(1-fid))/n_test # binomial sd
@@ -151,8 +154,10 @@ for (i in seq_along(data_files)) {
 grand_results <- data.frame(dataset = dataset
                             , n_instances = n_instances
                             , random_state = random_state
-                            , accuracy = accuracy
-                            , sd_accuracy = sd_accuracy
+                            , forest_performance = forest_performance
+                            , sd_forest_performance = sd_forest_performance
+                            , proxy_performance = proxy_performance
+                            , sd_proxy_performance = sd_proxy_performance
                             , fidelity = fidelity
                             , sd_fidelity = sd_fidelity
                             , mean_rule_cascade = mean_rule_cascade

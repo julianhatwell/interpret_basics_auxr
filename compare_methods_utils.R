@@ -132,8 +132,10 @@ n_instances <- integer(results_nrows)
 random_state <- integer(results_nrows)
 n_rules <- integer(results_nrows)
 n_rules_used <- integer(results_nrows)
-accuracy <- numeric(results_nrows)
-sd_accuracy <- numeric(results_nrows)
+forest_performance <- numeric(results_nrows)
+sd_forest_performance <- numeric(results_nrows)
+proxy_performance <- numeric(results_nrows)
+sd_proxy_performance <- numeric(results_nrows)
 fidelity <- numeric(results_nrows)
 sd_fidelity <- numeric(results_nrows)
 mean_rule_cascade <- numeric(results_nrows)
@@ -277,14 +279,17 @@ inTrees_benchmark <- function(forest, ds_container) {
   
   learner_preds <- applyLearner(learner, ds_container$X_test)
   learner_label <- which_class(applyLearner(learner, ds_container$X_test))
+  model_accurate <- ifelse( learner_label == as.numeric(ds_container$y_test), 1, 0)
   
   rule_idx <- whichRule_inTrees(learner, ds_container$X_test)
   rl_ln <- sapply(gregexpr("&", learner[rule_idx,4]), function(x) {length(x)[[1]] + 1})
   return(list(label=learner_label
               , rule_idx=rule_idx # which rule applies to which instance
               , rl_ln = rl_ln
+              , unique_rules = nrow(learner)
               , rule = learner[rule_idx, 4]
-              , model=learner
+              , model = learner
+              , model_accurate = model_accurate
               , model_type="inTrees")) 
   
 }
