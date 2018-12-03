@@ -88,6 +88,8 @@ for (i in seq_along(data_files)) {
                          , f1_tr = proxy_f1
                          , accuracy_tr = proxy_accu
                          , lift_tr = proxy_lift
+                         , coverage_tr = coverage
+                         , xcoverage_tr = xcoverage
                          , kl_div_tr = proxy_kl_div
                          , precision_tt = forest_precision
                          , stability_tt	= forest_stability
@@ -95,8 +97,10 @@ for (i in seq_along(data_files)) {
                          , f1_tt = forest_f1
                          , accuracy_tt = forest_accu
                          , lift_tt = forest_lift
+                         , coverage_tt = rep(NA, n_test)
+                         , xcoverage_tt = rep(NA, n_test)
                          , kl_div_tt = forest_kl_div)
-              , file = paste0(output_dirs[i], algorithm, "_rndst_", random_states[r], ".csv")
+              , file = paste0(output_dirs[i], algorithm, "_rnst_", random_states[r], ".csv")
     )
     
     this_run <- length(random_states) * (i - 1) + r

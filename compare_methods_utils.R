@@ -103,7 +103,7 @@ evaluate <- function(prior_labels, post_idx, classes) {
                     , chisq = chisq))
 }
 
-get_dataset_name <- function(x) {
+get_datasetnames <- function(x) {
   sub(".csv.gz", "", x)
 }
 
@@ -122,10 +122,10 @@ data_files <- c("adult_small_samp.csv.gz", "bankmark_samp.csv.gz"
                 , "german.csv.gz" , "lending_tiny_samp.csv.gz"
                 , "nursery_samp.csv.gz", "rcdv_samp.csv.gz")
 
-datasets <- sapply(data_files, get_dataset_name)
-output_dirs <- paste0(project_dir, datasets, "\\")
+datasetnames <- sapply(data_files, get_datasetnames)
+resfilesdirs <- paste0(project_dir, datasetnames, "\\")
 
-results_nrows <- length(random_states) * length(datasets)
+results_nrows <- length(random_states) * length(datasetnames)
 
 dataset <- character(results_nrows)
 n_instances <- integer(results_nrows)
@@ -176,8 +176,8 @@ sd_forest_lift <- numeric(results_nrows)
 
 data_prep <- function(i) {
   dat <- read.csv(gzfile(paste0(data_dir, data_files[i])))
-  train_idx <- read.csv(paste0(output_dirs[i], "train_index.csv"), header = FALSE)$V1 + 1
-  test_idx <<- read.csv(paste0(output_dirs[i], "test_index.csv"), header = FALSE)$V1 + 1
+  train_idx <- read.csv(paste0(resfilesdirs[i], "train_index.csv"), header = FALSE)$V1 + 1
+  test_idx <<- read.csv(paste0(resfilesdirs[i], "test_index.csv"), header = FALSE)$V1 + 1
   dat_train <<- dat[train_idx, ]
   dat_test <<- dat[test_idx, ]
   
@@ -196,8 +196,8 @@ data_prep <- function(i) {
   fmla <<- as.formula(paste(class_cols[i], "~ ."))
   
   ntree <<- fromJSON(readLines(file(paste0(
-    output_dirs[i]
-    , "best_params_rndst_"
+    resfilesdirs[i]
+    , "best_params_rnst_"
     , random_states[i]
     , ".json"))))$n_estimators
 }
@@ -309,12 +309,12 @@ set_labels <- function(y_tr, zvl) {
 
 sbrl_benchmark <- function(ds_container, classes) {
   # transform for sbrl
-  if (datasets[i] == "adult_small_samp") zero_val_label <- "<=50K"
-  if (datasets[i] == "bankmark_samp") zero_val_label <- "no"
-  if (datasets[i] == "car") zero_val_label <- "acc"
-  if (datasets[i] == "credit") zero_val_label <- "minus"
-  if (datasets[i] == "german") zero_val_label <- "bad"
-  if (datasets[i] == "lending_tiny_samp") zero_val_label <- "Charged Off"
+  if (datasetnames[i] == "adult_small_samp") zero_val_label <- "<=50K"
+  if (datasetnames[i] == "bankmark_samp") zero_val_label <- "no"
+  if (datasetnames[i] == "car") zero_val_label <- "acc"
+  if (datasetnames[i] == "credit") zero_val_label <- "minus"
+  if (datasetnames[i] == "german") zero_val_label <- "bad"
+  if (datasetnames[i] == "lending_tiny_samp") zero_val_label <- "Charged Off"
   
   train_label <- set_labels(ds_container$y_train, zero_val_label)
   test_label <- set_labels(ds_container$y_test, zero_val_label)
