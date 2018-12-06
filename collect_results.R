@@ -1,55 +1,5 @@
 source("dirs.R")
-
-# main results collection
-folders <- c("adult_small_samp"
-          , "bankmark_samp"
-          , "car"
-          , "cardio"
-          , "credit"
-          , "german"
-          , "lending_tiny_samp"
-          , "nursery_samp"
-          , "rcdv_samp")
-
-meths <- c("Anchors", "BRL", "CHIRPS", "defragTrees", "inTrees")
-
-np <- function(fld) {
-  return(function(fl) {
-    normalizePath(file.path(resfilesdir, fld, fl))  
-  })
-}
-
-is_which_method <- function(x) {
-  for (meth in meths) {
-    res <- grepl(meth, x)
-    if (res) return(meth)
-  }
-  return(NA)
-}
-
-# temp - correcting for mismatch in file names
-for(fld in folders) {
-  normpath <- np(fld)
-  
-  fls <- dir(normpath(""))
-  for (fl in fls) {
-    if (grepl("results_", fl)) {
-      file.rename(normpath(fl), normpath(sub("results_", "", fl)))
-    }
-  }
-}
-
-# temp - correcting for mismatch in file names
-for(fld in folders) {
-  normpath <- np(fld)
-  
-  fls <- dir(normpath(""))
-  for (fl in fls) {
-    if (grepl("rndst_", fl)) {
-      file.rename(normpath(fl), normpath(sub("rndst_", "rnst_", fl)))
-    }
-  }
-}
+source("collect_results_utils.R")
 
 first <- TRUE
 for (i in seq_along(folders)) {
@@ -118,16 +68,14 @@ for (i in seq_along(folders)) {
   }
 }
 
-
-# example results
-precision_mat <- tapply(main_results$precision.tt.
-                        , list(main_results$dataset_name
-                               , main_results$algorithm
-                               , main_results$random_state)
-                        , mean)
-
-
-mean_narm <- function(x) {
-  mean(x, na.rm = TRUE)
+dfs <- list()
+dps <- list()
+for (i in seq_along(metrics)) {
+  md <- mean_df(results_mat(main_results[, metrics_names[i]]))
+  dfs[[metrics[i]]] <- md
+  dps[[metrics[i]]] <- my_dotplot(dat = md, metric = metrics[i])
 }
-apply(precision_mat, c(1, 2), mean_narm)
+dps$stability
+dps$xcoverage
+dps$recall
+dps$f1

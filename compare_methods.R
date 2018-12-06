@@ -71,7 +71,7 @@ for (i in seq_along(data_files)) {
     
     # collect results
     # save each run for comparable analysis
-    write.csv(data.frame(dataset_name = rep(datasets[i], n_test)
+    write.csv(data.frame(dataset_name = rep(datasetnames[i], n_test)
                          , instance_id = test_idx
                          , algorithm = rep(algorithm, n_test)
                          , pretty_rule = benchmark$rule
@@ -97,14 +97,14 @@ for (i in seq_along(data_files)) {
                          , f1_tt = forest_f1
                          , accuracy_tt = forest_accu
                          , lift_tt = forest_lift
-                         , coverage_tt = rep(NA, n_test)
-                         , xcoverage_tt = rep(NA, n_test)
+                         , coverage_tt = coverage
+                         , xcoverage_tt = xcoverage
                          , kl_div_tt = forest_kl_div)
-              , file = paste0(output_dirs[i], algorithm, "_rnst_", random_states[r], ".csv")
+              , file = paste0(resfilesdirs[i], algorithm, "_rnst_", random_states[r], ".csv")
     )
     
     this_run <- length(random_states) * (i - 1) + r
-    dataset[this_run] <- datasets[i]
+    dataset[this_run] <- datasetnames[i]
     n_instances[this_run] <- n_test
     random_state[this_run] <- random_states[r]
     n_rules[this_run] <- benchmark$unique_rules
@@ -151,7 +151,7 @@ for (i in seq_along(data_files)) {
     mean_forest_lift[this_run] <- mean(forest_lift)
     sd_forest_lift[this_run] <- sd(forest_lift)
     
-    print(c(datasets[i], random_states[r]))
+    print(c(datasetnames[i], random_states[r]))
   }
 }
 
