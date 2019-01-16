@@ -1,24 +1,35 @@
 library(randomForest)
 library(jsonlite)
-random_states <- 123:(123 + 30)
+library(foreach)
+library(doParallel)
+n_cores <- detectCores() - 1
+random_states <- 123:(123 + 29)
 source("compare_methods_utils.R")
 
 algorithm <- "inTrees"
 # algorithm <- "BRL"
 
-for (i in seq_along(data_files)) {
+for (r in seq_along(random_states)) {
   
-  data_prep(i)
+  cl<-makeCluster(n_cores)
+  registerDoParallel(cl)
   
-  for (r in seq_along(random_states)) {
-    
+  stopCluster(cl)
+  
+  for (i in seq_along(data_files)) {
+  
+    data_prep(i)
     set.seed(random_states[r])
     randfor <- randomForest(fmla, data=dat_train, ntree=ntree)
     forest_label <- which_class(as.character(predict(randfor
                                                      , newdata = ds_container$X_test)))   
     
     if (algorithm == "inTrees") {
-      benchmark <- inTrees_benchmark(forest=randfor, ds_container=ds_container)
+      benchmark <- inTrees_benchmark(forest = randfor
+                                     , ds_container = ds_container
+                                     , ntree = ntree
+                                     , maxdepth = 1000# maxdepth
+                                     )
     } else {
       benchmark <- sbrl_benchmark(ds_container=ds_container, classes)
     }
@@ -154,53 +165,53 @@ for (i in seq_along(data_files)) {
     print(c(datasetnames[i], random_states[r]))
   }
 }
-
-grand_results <- data.frame(dataset = dataset
-                            , n_instances = n_instances
-                            , random_state = random_state
-                            , forest_performance = forest_performance
-                            , sd_forest_performance = sd_forest_performance
-                            , proxy_performance = proxy_performance
-                            , sd_proxy_performance = sd_proxy_performance
-                            , fidelity = fidelity
-                            , sd_fidelity = sd_fidelity
-                            , mean_rule_cascade = mean_rule_cascade
-                            , sd_rule_cascade = sd_rule_cascade
-                            , mean_rulelen = mean_rulelen
-                            , sd_rulelen = sd_rulelen
-                            , mean_coverage = mean_coverage
-                            , sd_coverage = sd_coverage
-                            , mean_xcoverage = mean_xcoverage
-                            , sd_xcoverage = sd_xcoverage
-                            , mean_proxy_precision = mean_proxy_precision
-                            , sd_proxy_precision = sd_proxy_precision
-                            , mean_proxy_stability = mean_proxy_stability
-                            , sd_proxy_stability = sd_proxy_stability
-                            , mean_proxy_recall = mean_proxy_recall
-                            , sd_proxy_recall = sd_proxy_recall
-                            , mean_proxy_f1 = mean_proxy_f1
-                            , sd_proxy_f1 = sd_proxy_f1
-                            , mean_proxy_accu = mean_proxy_accu
-                            , sd_proxy_accu = sd_proxy_accu
-                            , mean_proxy_lift = mean_proxy_lift
-                            , sd_proxy_lift = sd_proxy_lift
-                            , mean_forest_precision = mean_forest_precision
-                            , sd_forest_precision = sd_forest_precision
-                            , mean_forest_stability = mean_forest_stability
-                            , sd_forest_stability = sd_forest_stability
-                            , mean_forest_recall = mean_forest_recall
-                            , sd_forest_recall = sd_forest_recall
-                            , mean_forest_f1 = mean_forest_f1
-                            , sd_forest_f1 = sd_forest_f1
-                            , mean_forest_accu = mean_forest_accu
-                            , sd_forest_accu = sd_forest_accu
-                            , mean_forest_lift = mean_forest_lift
-                            , sd_forest_lift = sd_forest_lift)
-
-View(grand_results)
-write.csv(grand_results
-          , file=paste0(project_dir
-                        , "grand_results_"
-                        , algorithm
-                        , "_"
-                        , Sys.Date()))
+# 
+# grand_results <- data.frame(dataset = dataset
+#                             , n_instances = n_instances
+#                             , random_state = random_state
+#                             , forest_performance = forest_performance
+#                             , sd_forest_performance = sd_forest_performance
+#                             , proxy_performance = proxy_performance
+#                             , sd_proxy_performance = sd_proxy_performance
+#                             , fidelity = fidelity
+#                             , sd_fidelity = sd_fidelity
+#                             , mean_rule_cascade = mean_rule_cascade
+#                             , sd_rule_cascade = sd_rule_cascade
+#                             , mean_rulelen = mean_rulelen
+#                             , sd_rulelen = sd_rulelen
+#                             , mean_coverage = mean_coverage
+#                             , sd_coverage = sd_coverage
+#                             , mean_xcoverage = mean_xcoverage
+#                             , sd_xcoverage = sd_xcoverage
+#                             , mean_proxy_precision = mean_proxy_precision
+#                             , sd_proxy_precision = sd_proxy_precision
+#                             , mean_proxy_stability = mean_proxy_stability
+#                             , sd_proxy_stability = sd_proxy_stability
+#                             , mean_proxy_recall = mean_proxy_recall
+#                             , sd_proxy_recall = sd_proxy_recall
+#                             , mean_proxy_f1 = mean_proxy_f1
+#                             , sd_proxy_f1 = sd_proxy_f1
+#                             , mean_proxy_accu = mean_proxy_accu
+#                             , sd_proxy_accu = sd_proxy_accu
+#                             , mean_proxy_lift = mean_proxy_lift
+#                             , sd_proxy_lift = sd_proxy_lift
+#                             , mean_forest_precision = mean_forest_precision
+#                             , sd_forest_precision = sd_forest_precision
+#                             , mean_forest_stability = mean_forest_stability
+#                             , sd_forest_stability = sd_forest_stability
+#                             , mean_forest_recall = mean_forest_recall
+#                             , sd_forest_recall = sd_forest_recall
+#                             , mean_forest_f1 = mean_forest_f1
+#                             , sd_forest_f1 = sd_forest_f1
+#                             , mean_forest_accu = mean_forest_accu
+#                             , sd_forest_accu = sd_forest_accu
+#                             , mean_forest_lift = mean_forest_lift
+#                             , sd_forest_lift = sd_forest_lift)
+# 
+# View(grand_results)
+# write.csv(grand_results
+#           , file=paste0(project_dir
+#                         , "grand_results_"
+#                         , algorithm
+#                         , "_"
+#                         , Sys.Date()))

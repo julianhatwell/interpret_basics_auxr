@@ -114,12 +114,12 @@ project_dir <- "V:\\whiteboxing\\"
 class_cols <- c("income", "y"
                 , "acceptability"
                 , "NSP", "A16"
-                , "rating", "loan_status"
+                , "rating" #, "loan_status"
                 , "decision", "recid")
 
 data_files <- c("adult_small_samp.csv.gz", "bankmark_samp.csv.gz"
                 , "car.csv.gz", "cardio.csv.gz", "credit.csv.gz"
-                , "german.csv.gz" , "lending_tiny_samp.csv.gz"
+                , "german.csv.gz" #, "lending_tiny_samp.csv.gz"
                 , "nursery_samp.csv.gz", "rcdv_samp.csv.gz")
 
 datasetnames <- sapply(data_files, get_datasetnames)
@@ -140,11 +140,11 @@ fidelity <- numeric(results_nrows)
 sd_fidelity <- numeric(results_nrows)
 mean_rule_cascade <- numeric(results_nrows)
 mean_rulelen <- numeric(results_nrows)
-mean_pred_acc <- numeric(results_nrows)
 sd_rule_cascade <- numeric(results_nrows)
 sd_rulelen <- numeric(results_nrows)
-sd_pred_acc <- numeric(results_nrows)
 
+completion_date_time <- character(results_nrows)
+elapsed_time <- numeric(results_nrows)
 mean_coverage <- numeric(results_nrows)
 sd_coverage <- numeric(results_nrows)
 mean_xcoverage <- numeric(results_nrows)
@@ -176,7 +176,12 @@ sd_forest_lift <- numeric(results_nrows)
 
 data_prep <- function(i) {
   dat <- read.csv(gzfile(paste0(data_dir, data_files[i])))
-  train_idx <- read.csv(paste0(resfilesdirs[i], "train_index.csv"), header = FALSE)$V1 + 1
+  # ensure y is a factor
+  if (class(dat[, class_cols[i]]) != "factor") dat[, class_cols[i]] <- factor(dat[, class_cols[i]])
+  classes <<- levels(dat[, class_cols[i]])
+  
+  # test train split according to indices exported from Python
+  train_idx <<- read.csv(paste0(resfilesdirs[i], "train_index.csv"), header = FALSE)$V1 + 1
   test_idx <<- read.csv(paste0(resfilesdirs[i], "test_index.csv"), header = FALSE)$V1 + 1
   dat_train <<- dat[train_idx, ]
   dat_test <<- dat[test_idx, ]
@@ -190,15 +195,12 @@ data_prep <- function(i) {
     y_test = dat_test[, class_cols[i]]
   )
   
-  classes <<- levels(ds_container$y_train)
-  if (is.null(classes)) classes <<- c(0, 1)
-  
   fmla <<- as.formula(paste(class_cols[i], "~ ."))
   
   ntree <<- fromJSON(readLines(file(paste0(
     resfilesdirs[i]
     , "best_params_rnst_"
-    , random_states[i]
+    , random_states[r]
     , ".json"))))$n_estimators
 }
 
@@ -268,10 +270,10 @@ penalise_bad_prediction <- function(mc, tc, value) {
   return(ifelse(mc == tc, value, 0))
 }
 
-inTrees_benchmark <- function(forest, ds_container) {
-  
+inTrees_benchmark <- function(forest, ds_container, ntree, maxdepth) {
+  begin_time <- Sys.time()
   treeList <- RF2List(forest) # transform rf object to an inTrees" format
-  extract <- extractRules(treeList, ds_container$X_train, ntree = ntree, maxdepth = 1000) # R-executable conditions
+  extract <- extractRules(treeList, ds_container$X_train, ntree = ntree, maxdepth = maxdepth) # R-executable conditions
   ruleMetric <- getRuleMetric(extract, ds_container$X_train, ds_container$y_train) # get rule metrics
   ruleMetric <- pruneRule(ruleMetric, ds_container$X_train, ds_container$y_train)
   ruleMetric <- selectRuleRRF(ruleMetric, ds_container$X_train, ds_container$y_train)
@@ -279,18 +281,33 @@ inTrees_benchmark <- function(forest, ds_container) {
   
   learner_preds <- applyLearner(learner, ds_container$X_test)
   learner_label <- which_class(applyLearner(learner, ds_container$X_test))
-  model_accurate <- ifelse( learner_label == as.numeric(ds_container$y_test), 1, 0)
+  model_accurate <- ifelse(learner_label == as.numeric(ds_container$y_test), 1, 0)
   
   rule_idx <- whichRule_inTrees(learner, ds_container$X_test)
   rl_ln <- sapply(gregexpr("&", learner[rule_idx,4]), function(x) {length(x)[[1]] + 1})
-  return(list(label=learner_label
+  
+  end_time <- Sys.time()
+  
+  return(list(this_i = i
+              , this_r = r
+              , this_run = length(random_states) * (i - 1) + r
+              , random_state = random_states[r]
+              , datasetname = datasetnames[i]
+              , label = learner_label
               , rule_idx=rule_idx # which rule applies to which instance
               , rl_ln = rl_ln
               , unique_rules = nrow(learner)
+              , n_rules_used = length(unique(rule_idx))
               , rule = learner[rule_idx, 4]
+              , mean_rule_cascade = mean(rule_idx)
+              , sd_rule_cascade = sd(rule_idx)
+              , mean_rulelen = mean(rl_ln)
+              , sd_rulelen = sd(rl_ln)
               , model = learner
               , model_accurate = model_accurate
-              , model_type="inTrees")) 
+              , model_type="inTrees"
+              , completion_date_time = as.character(Sys.time())
+              , elapsed_time = as.numeric(end_time - begin_time)))
   
 }
 
