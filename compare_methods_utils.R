@@ -1,6 +1,7 @@
 library(sbrl)
 library(inTrees)
 library(rattle)
+library(jsonlite)
 
 # utility functions
 p_count <- function(numvec) {
@@ -107,73 +108,6 @@ get_datasetnames <- function(x) {
   sub(".csv.gz", "", x)
 }
 
-# importing data
-data_dir <- "C:\\Users\\id126493\\Documents\\GitHub\\explain_te\\CHIRPS\\datafiles\\"
-project_dir <- "V:\\whiteboxing\\"
-
-class_cols <- c("income", "y"
-                , "acceptability"
-                , "NSP", "A16"
-                , "rating" #, "loan_status"
-                , "decision", "recid")
-
-data_files <- c("adult_small_samp.csv.gz", "bankmark_samp.csv.gz"
-                , "car.csv.gz", "cardio.csv.gz", "credit.csv.gz"
-                , "german.csv.gz" #, "lending_tiny_samp.csv.gz"
-                , "nursery_samp.csv.gz", "rcdv_samp.csv.gz")
-
-datasetnames <- sapply(data_files, get_datasetnames)
-resfilesdirs <- paste0(project_dir, datasetnames, "\\")
-
-results_nrows <- length(random_states) * length(datasetnames)
-
-dataset <- character(results_nrows)
-n_instances <- integer(results_nrows)
-random_state <- integer(results_nrows)
-n_rules <- integer(results_nrows)
-n_rules_used <- integer(results_nrows)
-forest_performance <- numeric(results_nrows)
-sd_forest_performance <- numeric(results_nrows)
-proxy_performance <- numeric(results_nrows)
-sd_proxy_performance <- numeric(results_nrows)
-fidelity <- numeric(results_nrows)
-sd_fidelity <- numeric(results_nrows)
-mean_rule_cascade <- numeric(results_nrows)
-mean_rulelen <- numeric(results_nrows)
-sd_rule_cascade <- numeric(results_nrows)
-sd_rulelen <- numeric(results_nrows)
-
-completion_date_time <- character(results_nrows)
-elapsed_time <- numeric(results_nrows)
-mean_coverage <- numeric(results_nrows)
-sd_coverage <- numeric(results_nrows)
-mean_xcoverage <- numeric(results_nrows)
-sd_xcoverage <- numeric(results_nrows)
-mean_proxy_precision <- numeric(results_nrows)
-sd_proxy_precision <- numeric(results_nrows)
-mean_proxy_stability <- numeric(results_nrows)
-sd_proxy_stability <- numeric(results_nrows)
-mean_proxy_recall <- numeric(results_nrows)
-sd_proxy_recall <- numeric(results_nrows)
-mean_proxy_f1 <- numeric(results_nrows)
-sd_proxy_f1 <- numeric(results_nrows)
-mean_proxy_accu <- numeric(results_nrows)
-sd_proxy_accu <- numeric(results_nrows)
-mean_proxy_lift <- numeric(results_nrows)
-sd_proxy_lift <- numeric(results_nrows)
-mean_forest_precision <- numeric(results_nrows)
-sd_forest_precision <- numeric(results_nrows)
-mean_forest_stability <- numeric(results_nrows)
-sd_forest_stability <- numeric(results_nrows)
-mean_forest_recall <- numeric(results_nrows)
-sd_forest_recall <- numeric(results_nrows)
-mean_forest_f1 <- numeric(results_nrows)
-sd_forest_f1 <- numeric(results_nrows)
-mean_forest_accu <- numeric(results_nrows)
-sd_forest_accu <- numeric(results_nrows)
-mean_forest_lift <- numeric(results_nrows)
-sd_forest_lift <- numeric(results_nrows)
-
 data_prep <- function(i) {
   dat <- read.csv(gzfile(paste0(data_dir, data_files[i])))
   # ensure y is a factor
@@ -271,7 +205,7 @@ penalise_bad_prediction <- function(mc, tc, value) {
 }
 
 inTrees_benchmark <- function(forest, ds_container, ntree, maxdepth) {
-  begin_time <- Sys.time()
+  begin_time <- as.character(Sys.time())
   treeList <- RF2List(forest) # transform rf object to an inTrees" format
   extract <- extractRules(treeList, ds_container$X_train, ntree = ntree, maxdepth = maxdepth) # R-executable conditions
   ruleMetric <- getRuleMetric(extract, ds_container$X_train, ds_container$y_train) # get rule metrics
@@ -286,15 +220,13 @@ inTrees_benchmark <- function(forest, ds_container, ntree, maxdepth) {
   rule_idx <- whichRule_inTrees(learner, ds_container$X_test)
   rl_ln <- sapply(gregexpr("&", learner[rule_idx,4]), function(x) {length(x)[[1]] + 1})
   
-  end_time <- Sys.time()
-  
   return(list(this_i = i
               , this_r = r
               , this_run = length(random_states) * (i - 1) + r
               , random_state = random_states[r]
               , datasetname = datasetnames[i]
               , label = learner_label
-              , rule_idx=rule_idx # which rule applies to which instance
+              , rule_idx = rule_idx # which rule applies to which instance
               , rl_ln = rl_ln
               , unique_rules = nrow(learner)
               , n_rules_used = length(unique(rule_idx))
@@ -306,8 +238,9 @@ inTrees_benchmark <- function(forest, ds_container, ntree, maxdepth) {
               , model = learner
               , model_accurate = model_accurate
               , model_type="inTrees"
-              , completion_date_time = as.character(Sys.time())
-              , elapsed_time = as.numeric(end_time - begin_time)))
+              , begin_time = begin_time
+              , completion_time = as.character(Sys.time())
+              ))
   
 }
 

@@ -1,39 +1,69 @@
 library(randomForest)
-library(jsonlite)
 library(foreach)
 library(doParallel)
-n_cores <- detectCores() - 1
+n_cores <- detectCores() - 2
 random_states <- 123:152
 source("compare_methods_utils.R")
 
 algorithm <- "inTrees"
 # algorithm <- "BRL"
 
-cl<-makeCluster(n_cores)
+# importing data
+data_dir <- "C:\\Users\\id126493\\Documents\\GitHub\\explain_te\\CHIRPS\\datafiles\\"
+project_dir <- "V:\\whiteboxing\\"
+
+class_cols <- c(
+                "income"
+                # , "y"
+                # , "acceptability"
+                # , "NSP"
+                # , "A16"
+                # , "rating"
+                # #, "loan_status"
+                # , "decision"
+                # , "recid"
+                )
+
+data_files <- c(
+                "adult_small_samp.csv.gz"
+                # , "bankmark_samp.csv.gz"
+                # , "car.csv.gz"
+                # , "cardio.csv.gz"
+                # , "credit.csv.gz"
+                # , "german.csv.gz"
+                # #, "lending_tiny_samp.csv.gz"
+                # , "nursery_samp.csv.gz"
+                # , "rcdv_samp.csv.gz"
+                )
+
+datasetnames <- sapply(data_files, get_datasetnames)
+resfilesdirs <- paste0(project_dir, datasetnames, "\\")
+
+results_nrows <- length(random_states) * length(datasetnames)
+
+cl <- makeCluster(n_cores)
 registerDoParallel(cl)
 
 gres <- foreach(rnr = 1:results_nrows
-        # , combine = list
-        # , .multicombine = TRUE
         , .packages = c("jsonlite"
                         , "randomForest"
                         , "rattle"
                         , "inTrees"
                         , "sbrl"))  %dopar% {
           
-          r <- rnr %/% length(datasetnames) + 1
-          i <- rnr %% length(datasetnames)
-          if (i == 0)
-            { i <- 8
-              r <- r - 1
-          }
+          # set counters
+          r <- ((rnr - 1) %/% length(datasetnames)) + 1
+          i <- ((rnr - 1) %% length(datasetnames)) + 1
           
+          # encapsulated set up
           data_prep(i)
+          
+          # build randfor
           set.seed(random_states[r])
           randfor <- randomForest(fmla, data=dat_train, ntree=ntree)
           forest_label <- which_class(as.character(predict(randfor
                                                            , newdata = ds_container$X_test)))
-
+          # run method and benchmark
           if (algorithm == "inTrees") {
             benchmark <- inTrees_benchmark(forest = randfor
                                            , ds_container = ds_container
@@ -44,6 +74,7 @@ gres <- foreach(rnr = 1:results_nrows
             benchmark <- sbrl_benchmark(ds_container=ds_container, classes)
           }
           
+          # collect results
           results_init(n_test)
           for (j in 1:n_test) {
             rule <- benchmark$rule_idx[j]
@@ -90,8 +121,7 @@ gres <- foreach(rnr = 1:results_nrows
             forest_kl_div[j] <- entropy_corrected(instance_results[["posterior"]], instance_results[["prior"]])
           }
           
-          # collect results
-          # save each run for comparable analysis
+          # save results to file before exiting loop
           write.csv(data.frame(dataset_name = rep(datasetnames[i], n_test)
                                , instance_id = test_idx
                                , algorithm = rep(algorithm, n_test)
@@ -123,151 +153,33 @@ gres <- foreach(rnr = 1:results_nrows
                                , kl_div_tt = forest_kl_div)
                     , file = paste0(resfilesdirs[i], algorithm, "_rnst_", random_states[r], ".csv")
           )
-
-          f_perf <- mean(forest_label == as.numeric(ds_container$y_test))
-          benchmark$forest_performance <- f_perf
-          benchmark$sd_forest_performance <- (f_perf/(1-f_perf))/length(forest_label)
-          p_perf <- mean(benchmark$model_accurate)
-          benchmark$proxy_performance <- p_perf
-          benchmark$sd_proxy_performance <- (p_perf/(1-p_perf))/length(benchmark$model_accurate) # binomial sd
-          fid <- mean(benchmark$label == forest_label)
-          benchmark$fidelity <- fid
-          benchmark$sd_fidelity <- (fid/(1-fid))/n_test # binomial sd
           
-          benchmark$mean_coverage <- mean(coverage)
-          benchmark$sd_coverage <- sd(coverage)
-          benchmark$mean_xcoverage <- mean(xcoverage)
-          benchmark$sd_xcoverage <- sd(xcoverage)
-          benchmark$mean_proxy_precision <- mean(proxy_precision)
-          benchmark$sd_proxy_precision <- sd(proxy_precision)
-          benchmark$mean_proxy_stability <- mean(proxy_stability)
-          benchmark$sd_proxy_stability <- sd(proxy_stability)
-          benchmark$mean_proxy_recall <- mean(proxy_recall)
-          benchmark$sd_proxy_recall <- sd(proxy_recall)
-          benchmark$mean_proxy_f1 <- mean(proxy_f1)
-          benchmark$sd_proxy_f1 <- sd(proxy_f1)
-          benchmark$mean_proxy_accu <- mean(proxy_accu)
-          benchmark$sd_proxy_accu <- sd(proxy_accu)
-          benchmark$mean_proxy_lift <- mean(proxy_lift)
-          benchmark$sd_proxy_lift <- sd(proxy_lift)
-          benchmark$mean_forest_precision <- mean(forest_precision)
-          benchmark$sd_forest_precision <- sd(forest_precision)
-          benchmark$mean_forest_stability <- mean(forest_stability)
-          benchmark$sd_forest_stability <- sd(forest_stability)
-          benchmark$mean_forest_recall <- mean(forest_recall)
-          benchmark$sd_forest_recall <- sd(forest_recall)
-          benchmark$mean_forest_f1 <- mean(forest_f1)
-          benchmark$sd_forest_f1 <- sd(forest_f1)
-          benchmark$mean_forest_accu <- mean(forest_accu)
-          benchmark$sd_forest_accu <- sd(forest_accu)
-          benchmark$mean_forest_lift <- mean(forest_lift)
-          benchmark$sd_forest_lift <- sd(forest_lift)
-
-          benchmark
+          # collect summary results
+          f_perf <- mean(forest_label == as.numeric(ds_container$y_test))
+          p_perf <- mean(benchmark$model_accurate)
+          fid <- mean(benchmark$label == forest_label)
+          
+          # save results to file before exiting loop
+          write.csv(data.frame(dataset_name = datasetnames[i]
+                    , algorithm = algorithm
+                    , n_instances = n_test
+                    , n_rules = benchmark$unique_rules
+                    , n_rules_used = benchmark$n_rules_used
+                    , mean_rule_cascade = benchmark$mean_rule_cascade
+                    , sd_rule_cascade = benchmark$sd_rule_cascade
+                    , mean_rulelen = benchmark$mean_rulelen
+                    , sd_rulelen = benchmark$sd_rulelen
+                    , begin_time = benchmark$begin_time
+                    , completion_time = benchmark$completion_time
+                    , forest_performance = f_perf
+                    , sd_forest_performance = (f_perf/(1-f_perf))/length(forest_label)
+                    , sd_proxy_performance = (p_perf/(1-p_perf))/length(benchmark$model_accurate)
+                    , sd_fidelity = (fid/(1-fid))/n_test
+            ), file = paste0(resfilesdirs[i], algorithm, "_rnst_", random_states[r], "_summary.csv")
+          )
+          
+          # don't return anything to foreach
+          NULL
 }
 
 stopCluster(cl)
-print(gr[[1]]$this_run)
-
-for(gr in seq_along(gres)) {
-  this_run <- gres[[gr]]$this_run
-  dataset[this_run] <- gres[[gr]]$datasetname
-  n_instances[this_run] <- length(gres[[gr]]$label)
-  random_state[this_run] <- gres[[gr]]$random_state
-  n_rules[this_run] <- gres[[gr]]$unique_rules
-  n_rules_used[this_run] <- gres[[gr]]$n_rules_used
-  forest_performance[this_run] <- gres[[gr]]$forest_performance
-  sd_forest_performance[this_run] <- gres[[gr]]$sd_forest_performance
-  proxy_performance[this_run] <- gres[[gr]]$proxy_performance
-  sd_proxy_performance[this_run] <- gres[[gr]]$sd_proxy_performance
-  fidelity[this_run] <- gres[[gr]]$fidelity
-  sd_fidelity[this_run] <- gres[[gr]]$sd_fidelity
-  mean_rule_cascade[this_run] <- gres[[gr]]$mean_rule_cascade
-  mean_rulelen[this_run] <- gres[[gr]]$mean_rulelen
-  sd_rule_cascade[this_run] <- gres[[gr]]$sd_rule_cascade
-  sd_rulelen[this_run] <- gres[[gr]]$sd_rulelen
-  
-  completion_date_time[this_run] <- gres[[gr]]$completion_date_time
-  elapsed_time[this_run] <- gres[[gr]]$elapsed_time
-  mean_coverage[this_run] <- gres[[gr]]$mean_coverage
-  sd_coverage[this_run] <- gres[[gr]]$sd_coverage
-  mean_xcoverage[this_run] <- gres[[gr]]$mean_xcoverage
-  sd_xcoverage[this_run] <- gres[[gr]]$sd_xcoverage
-  mean_proxy_precision[this_run] <- gres[[gr]]$mean_proxy_precision
-  sd_proxy_precision[this_run] <- gres[[gr]]$sd_proxy_precision
-  mean_proxy_stability[this_run] <- gres[[gr]]$mean_proxy_stability
-  sd_proxy_stability[this_run] <- gres[[gr]]$sd_proxy_stability
-  mean_proxy_recall[this_run] <- gres[[gr]]$mean_proxy_recall
-  sd_proxy_recall[this_run] <- gres[[gr]]$sd_proxy_recall
-  mean_proxy_f1[this_run] <- gres[[gr]]$mean_proxy_f1
-  sd_proxy_f1[this_run] <- gres[[gr]]$sd_proxy_f1
-  mean_proxy_accu[this_run] <- gres[[gr]]$mean_proxy_accu
-  sd_proxy_accu[this_run] <- gres[[gr]]$sd_proxy_accu
-  mean_proxy_lift[this_run] <- gres[[gr]]$mean_proxy_lift
-  sd_proxy_lift[this_run] <- gres[[gr]]$sd_proxy_lift
-  mean_forest_precision[this_run] <- gres[[gr]]$mean_forest_precision
-  sd_forest_precision[this_run] <- gres[[gr]]$sd_forest_precision
-  mean_forest_stability[this_run] <- gres[[gr]]$mean_forest_stability
-  sd_forest_stability[this_run] <- gres[[gr]]$sd_forest_stability
-  mean_forest_recall[this_run] <- gres[[gr]]$mean_forest_recall
-  sd_forest_recall[this_run] <- gres[[gr]]$sd_forest_recall
-  mean_forest_f1[this_run] <- gres[[gr]]$mean_forest_f1
-  sd_forest_f1[this_run] <- numeric(results_nrows)
-  mean_forest_accu[this_run] <- gres[[gr]]$mean_forest_accu
-  sd_forest_accu[this_run] <- gres[[gr]]$sd_forest_accu
-  mean_forest_lift[this_run] <- gres[[gr]]$mean_forest_lift
-  sd_forest_lift[this_run] <- gres[[gr]]$sd_forest_lift
-}
-
-grand_results <- data.frame(dataset = dataset
-                            , n_instances = n_instances
-                            , random_state = random_state
-                              , completion_date_time = completion_date_time
-                              , elapsed_time = elapsed_time
-                            , forest_performance = forest_performance
-                            , sd_forest_performance = sd_forest_performance
-                            , proxy_performance = proxy_performance
-                            , sd_proxy_performance = sd_proxy_performance
-                            , fidelity = fidelity
-                            , sd_fidelity = sd_fidelity
-                            , mean_rule_cascade = mean_rule_cascade
-                            , sd_rule_cascade = sd_rule_cascade
-                            , mean_rulelen = mean_rulelen
-                            , sd_rulelen = sd_rulelen
-                            , mean_coverage = mean_coverage
-                            , sd_coverage = sd_coverage
-                            , mean_xcoverage = mean_xcoverage
-                            , sd_xcoverage = sd_xcoverage
-                            , mean_proxy_precision = mean_proxy_precision
-                            , sd_proxy_precision = sd_proxy_precision
-                            , mean_proxy_stability = mean_proxy_stability
-                            , sd_proxy_stability = sd_proxy_stability
-                            , mean_proxy_recall = mean_proxy_recall
-                            , sd_proxy_recall = sd_proxy_recall
-                            , mean_proxy_f1 = mean_proxy_f1
-                            , sd_proxy_f1 = sd_proxy_f1
-                            , mean_proxy_accu = mean_proxy_accu
-                            , sd_proxy_accu = sd_proxy_accu
-                            , mean_proxy_lift = mean_proxy_lift
-                            , sd_proxy_lift = sd_proxy_lift
-                            , mean_forest_precision = mean_forest_precision
-                            , sd_forest_precision = sd_forest_precision
-                            , mean_forest_stability = mean_forest_stability
-                            , sd_forest_stability = sd_forest_stability
-                            , mean_forest_recall = mean_forest_recall
-                            , sd_forest_recall = sd_forest_recall
-                            , mean_forest_f1 = mean_forest_f1
-                            , sd_forest_f1 = sd_forest_f1
-                            , mean_forest_accu = mean_forest_accu
-                            , sd_forest_accu = sd_forest_accu
-                            , mean_forest_lift = mean_forest_lift
-                            , sd_forest_lift = sd_forest_lift)
-
-View(grand_results)
-write.csv(grand_results
-          , file=paste0(project_dir
-                        , "grand_results_"
-                        , algorithm
-                        , "_"
-                        , Sys.Date()
-                        , ".csv"))
