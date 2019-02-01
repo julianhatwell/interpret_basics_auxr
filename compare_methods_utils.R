@@ -265,6 +265,7 @@ sbrl_benchmark <- function(ds_container, classes) {
   if (datasetnames[i] == "credit") zero_val_label <- "minus"
   if (datasetnames[i] == "german") zero_val_label <- "bad"
   if (datasetnames[i] == "lending_tiny_samp") zero_val_label <- "Charged Off"
+  if (datasetnames[i] == "rcdv_samp") zero_val_label <- "N"
   
   train_label <- set_labels(ds_container$y_train, zero_val_label)
   test_label <- set_labels(ds_container$y_test, zero_val_label)
