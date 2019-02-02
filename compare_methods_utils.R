@@ -258,6 +258,7 @@ set_labels <- function(y_tr, zvl) {
 }
 
 sbrl_benchmark <- function(ds_container, classes) {
+  begin_time <- as.character(Sys.time())
   # transform for sbrl
   if (datasetnames[i] == "adult_small_samp") zero_val_label <- "<=50K"
   if (datasetnames[i] == "bankmark_samp") zero_val_label <- "no"
@@ -288,14 +289,27 @@ sbrl_benchmark <- function(ds_container, classes) {
   
   rule_idx <- ifelse(rule_idx == 0, n_rules, rule_idx) # makes rule extract easier
   rl_ln <- sapply(gregexpr("=", rules_plus_default[rule_idx]), function(x) {ifelse(x[1] == -1, 0, length(x)[1])})
-  rule = rules_plus_default[rule_idx]
+  rule <- rules_plus_default[rule_idx]
   
-  return(list(label=sbrl_label
+  return(list(this_i = i
+              , this_r = r
+              , this_run = length(random_states) * (i - 1) + r
+              , random_state = random_states[r]
+              , datasetname = datasetnames[i]
+              , label=sbrl_label
               , rule_idx = rule_pos
               , rl_ln = rl_ln
               , unique_rules = length(model$rs$V1)
+              , n_rules_used = length(unique(rule_idx))
               , rule = rule
+              , mean_rule_cascade = mean(rule_pos)
+              , sd_rule_cascade = sd(rule_pos)
+              , mean_rulelen = mean(rl_ln)
+              , sd_rulelen = sd(rl_ln)
               , model = model
               , model_accurate = model_accurate
-              , model_type="sbrl"))
+              , model_type="sbrl"
+              , begin_time = begin_time
+              , completion_time = as.character(Sys.time())
+              ))
 }

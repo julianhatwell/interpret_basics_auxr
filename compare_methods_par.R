@@ -2,18 +2,18 @@ library(randomForest)
 library(foreach)
 library(doParallel)
 n_cores <- detectCores() - 2
-random_states <- 123:152
+random_states <- 123 # :152
 source("compare_methods_utils.R")
 
-algorithm <- "inTrees"
-# algorithm <- "BRL"
+# algorithm <- "inTrees"
+algorithm <- "BRL"
 
 # importing data
 data_dir <- "C:\\Users\\id126493\\Documents\\GitHub\\explain_te\\CHIRPS\\datafiles\\"
 project_dir <- "V:\\whiteboxing\\"
 
 class_cols <- c(
-                # "income"
+                "income"
                 # , "y"
                 # , "acceptability"
                 # , "NSP"
@@ -21,11 +21,11 @@ class_cols <- c(
                 #, "rating"
                 # #, "loan_status"
                 # , "decision"
-                "recid"
+                # , "recid"
                 )
 
 data_files <- c(
-                # "adult_small_samp.csv.gz"
+                "adult_small_samp.csv.gz"
                 # , "bankmark_samp.csv.gz"
                 # , "car.csv.gz"
                 # , "cardio.csv.gz"
@@ -33,7 +33,7 @@ data_files <- c(
                 # , "german.csv.gz"
                 # #, "lending_tiny_samp.csv.gz"
                 # , "nursery_samp.csv.gz"
-                "rcdv_samp.csv.gz"
+                # , "rcdv_samp.csv.gz"
                 )
 
 datasetnames <- sapply(data_files, get_datasetnames)
@@ -123,7 +123,7 @@ gres <- foreach(rnr = 1:results_nrows
           
           # save results to file before exiting loop
           write.csv(data.frame(dataset_name = rep(datasetnames[i], n_test)
-                               , instance_id = test_idx
+                               , instance_id = test_idx - 1 # conform with Python zero base
                                , algorithm = rep(algorithm, n_test)
                                , pretty_rule = benchmark$rule
                                , rule_length = benchmark$rl_ln
@@ -179,7 +179,7 @@ gres <- foreach(rnr = 1:results_nrows
           )
           
           # don't return anything to foreach
-          NULL
+          benchmark
 }
 
 stopCluster(cl)
