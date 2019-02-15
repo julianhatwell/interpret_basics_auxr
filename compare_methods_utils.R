@@ -3,6 +3,8 @@ library(inTrees)
 library(rattle)
 library(jsonlite)
 
+source("data_files_mgmt.R")
+
 # utility functions
 p_count <- function(numvec) {
   tab <- table(numvec)
@@ -102,10 +104,6 @@ evaluate <- function(prior_labels, post_idx, classes) {
                     , accu = accu
                     , lift = lift
                     , chisq = chisq))
-}
-
-get_datasetnames <- function(x) {
-  sub(".csv.gz", "", x)
 }
 
 data_prep <- function(i) {
