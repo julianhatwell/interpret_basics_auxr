@@ -10,15 +10,17 @@ algorithm <- "BRL"
 
 results_nrows <- length(random_states) * length(datasetnames)
 
-cl <- makeCluster(n_cores)
-registerDoParallel(cl)
+# cl <- makeCluster(n_cores)
+# registerDoParallel(cl)
 
-gres <- foreach(rnr = 1:results_nrows
-        , .packages = c("jsonlite"
-                        , "randomForest"
-                        , "rattle"
-                        , "inTrees"
-                        , "sbrl"))  %dopar% {
+# gres <- foreach(rnr = 1:results_nrows
+#         , .packages = c("jsonlite"
+#                         , "randomForest"
+#                         , "rattle"
+#                         , "inTrees"
+#                         , "sbrl"))  %dopar% {
+
+for (rnr in 1:results_nrows) {
           
           # set counters
           r <- ((rnr - 1) %/% length(datasetnames)) + 1
@@ -26,6 +28,15 @@ gres <- foreach(rnr = 1:results_nrows
           
           # encapsulated set up
           data_prep(i)
+          
+          # classifier prep
+          fmla <- as.formula(paste(class_cols[i], "~ ."))
+          
+          ntree <- fromJSON(readLines(file(paste0(
+            resfilesdirs[i]
+            , "best_params_rnst_"
+            , random_states[r]
+            , ".json"))))$n_estimators
           
           # build randfor
           set.seed(random_states[r])
@@ -44,9 +55,13 @@ gres <- foreach(rnr = 1:results_nrows
           }
           
           # collect results
+          tpe <- time_per_explanation(benchmark$begin_time
+                                      , benchmark$completion_time
+                                      , n_test)
           results_init(n_test)
           for (j in 1:n_test) {
             rule <- benchmark$rule_idx[j]
+            
             covered_instances <- benchmark$rule_idx == rule
             covered_instances <- covered_instances[-j] # drop out current instance
             loo_true_labels <- as.character(ds_container$y_test)[-j]
@@ -88,6 +103,7 @@ gres <- foreach(rnr = 1:results_nrows
                                                       , benchmark$label[j]
                                                       , instance_results[["lift"]][forest_label[j]])
             forest_kl_div[j] <- entropy_corrected(instance_results[["posterior"]], instance_results[["prior"]])
+            
           }
           
           # save results to file before exiting loop
@@ -119,7 +135,8 @@ gres <- foreach(rnr = 1:results_nrows
                                , lift_tt = forest_lift
                                , coverage_tt = coverage
                                , xcoverage_tt = xcoverage
-                               , kl_div_tt = forest_kl_div)
+                               , kl_div_tt = forest_kl_div
+                               , elapsed_time = rep(tpe, n_test))
                     , file = paste0(resfilesdirs[i], algorithm, "_rnst_", random_states[r], ".csv")
           )
           
@@ -138,8 +155,8 @@ gres <- foreach(rnr = 1:results_nrows
                     , sd_rule_cascade = benchmark$sd_rule_cascade
                     , mean_rulelen = benchmark$mean_rulelen
                     , sd_rulelen = benchmark$sd_rulelen
-                    , begin_time = benchmark$begin_time
-                    , completion_time = benchmark$completion_time
+                    , begin_time = as.character(benchmark$begin_time)
+                    , completion_time = as.character(benchmark$completion_time)
                     , forest_performance = f_perf
                     , sd_forest_performance = (f_perf/(1-f_perf))/length(forest_label)
                     , sd_proxy_performance = (p_perf/(1-p_perf))/length(benchmark$model_accurate)
@@ -151,4 +168,4 @@ gres <- foreach(rnr = 1:results_nrows
           benchmark
 }
 
-stopCluster(cl)
+# stopCluster(cl)

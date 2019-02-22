@@ -126,14 +126,6 @@ data_prep <- function(i) {
     X_test = dat_test[, names(dat) != class_cols[i]],
     y_test = dat_test[, class_cols[i]]
   )
-  
-  fmla <<- as.formula(paste(class_cols[i], "~ ."))
-  
-  ntree <<- fromJSON(readLines(file(paste0(
-    resfilesdirs[i]
-    , "best_params_rnst_"
-    , random_states[r]
-    , ".json"))))$n_estimators
 }
 
 results_init <<- function(n_test) {
@@ -203,7 +195,7 @@ penalise_bad_prediction <- function(mc, tc, value) {
 }
 
 inTrees_benchmark <- function(forest, ds_container, ntree, maxdepth) {
-  begin_time <- as.character(Sys.time())
+  begin_time <- Sys.time()
   treeList <- RF2List(forest) # transform rf object to an inTrees" format
   extract <- extractRules(treeList, ds_container$X_train, ntree = ntree, maxdepth = maxdepth) # R-executable conditions
   ruleMetric <- getRuleMetric(extract, ds_container$X_train, ds_container$y_train) # get rule metrics
@@ -237,7 +229,7 @@ inTrees_benchmark <- function(forest, ds_container, ntree, maxdepth) {
               , model_accurate = model_accurate
               , model_type="inTrees"
               , begin_time = begin_time
-              , completion_time = as.character(Sys.time())
+              , completion_time = Sys.time()
               ))
   
 }
@@ -255,8 +247,16 @@ set_labels <- function(y_tr, zvl) {
   factor(ifelse(y_tr == zvl, 0, 1)) # error if not in this format  
 }
 
+time_per_explanation <- function(b_time, c_time, n_test) {
+  difference <- c_time - b_time
+  tpe <- as.numeric(c_time - b_time) / n_test
+  if (attr(difference, "units") == "minutes") tpe <- tpe * 60
+  if (attr(difference, "units") == "hours") tpe <- tpe * 3600
+  return(tpe)
+}
+
 sbrl_benchmark <- function(ds_container, classes) {
-  begin_time <- as.character(Sys.time())
+  begin_time <- Sys.time()
   # transform for sbrl
   if (datasetnames[i] == "adult_small_samp") zero_val_label <- "<=50K"
   if (datasetnames[i] == "bankmark_samp") zero_val_label <- "no"
@@ -274,9 +274,9 @@ sbrl_benchmark <- function(ds_container, classes) {
   
   test_data <- sbrl_data_prep(ds_container$X_test)
   
-  model <- sbrl(tdata=train_data, rule_minlen=1, rule_maxlen=5, 
+  model <- sbrl(tdata=train_data, rule_minlen=1, rule_maxlen=6, 
                 minsupport_pos=0.05, minsupport_neg=0.05,
-                lambda=10.0, eta=2.5, nchain=10)
+                lambda=10.0, eta=4, nchain=10)
   
   sbrl_label <- ifelse(predict(model, tdata=test_data)$V1 > 0.5, 1, 2)
   model_accurate <- ifelse(sbrl_label == as.numeric(test_label), 1, 0)
@@ -308,6 +308,6 @@ sbrl_benchmark <- function(ds_container, classes) {
               , model_accurate = model_accurate
               , model_type="sbrl"
               , begin_time = begin_time
-              , completion_time = as.character(Sys.time())
+              , completion_time = Sys.time()
               ))
 }

@@ -1,21 +1,19 @@
 # data settings
-data_dir <- "C:\\Users\\id126493\\Documents\\GitHub\\interpret_basics2\\forest_surveyor\\datafiles\\"
-# datafilesdir <- "c:\\Dev\\Study\\Python\\interpret_basics2\\forest_surveyor\\datafiles\\"
+data_dir <- "C:\\Users\\id126493\\Documents\\GitHub\\explain_te\\CHIRPS\\datafiles\\"
+# datafilesdir <- "c:\\Dev\\Study\\Python\\explain_te\\forest_surveyor\\datafiles\\"
 # datafilesdir <- "/home/ubuntu/forest_surveyor/data_files/"
 
-# resfilesdir <- "C:/Users/id126493/Documents/GitHub/interpret_basics2/whiteboxing"
 project_dir <- "V:\\whiteboxing\\"
-# resfilesdir <- "C:/dev/study/python/interpret_basics2/whiteboxing"
 
 class_cols <- c(
   "income"
   , "y"
   , "acceptability"
-  , "NSP"
+  # , "NSP"
   , "A16"
   , "rating"
-  , "loan_status"
-  , "decision"
+  # , "loan_status"
+  # , "decision"
   , "recid"
 )
 
@@ -23,12 +21,12 @@ data_files <- c(
   "adult_small_samp.csv.gz"
   , "bankmark_samp.csv.gz"
   , "car.csv.gz"
-  , "cardio.csv.gz"
+  # , "cardio.csv.gz"
   , "credit.csv.gz"
   , "german.csv.gz"
-  , "lending_tiny_samp.csv.gz"
-  , "nursery_samp.csv.gz"
-  #, "rcdv_samp.csv.gz"
+  # , "lending_tiny_samp.csv.gz"
+  # , "nursery_samp.csv.gz"
+  , "rcdv_samp.csv.gz"
 )
 
 get_datasetnames <- function(x) {
