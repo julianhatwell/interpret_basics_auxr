@@ -9,11 +9,11 @@ class_cols <- c(
   "income"
   , "y"
   , "acceptability"
-  # , "NSP"
+, "NSP"
   , "A16"
   , "rating"
   # , "loan_status"
-  # , "decision"
+, "decision"
   , "recid"
 )
 
@@ -21,11 +21,11 @@ data_files <- c(
   "adult_small_samp.csv.gz"
   , "bankmark_samp.csv.gz"
   , "car.csv.gz"
-  # , "cardio.csv.gz"
+  , "cardio.csv.gz"
   , "credit.csv.gz"
   , "german.csv.gz"
   # , "lending_tiny_samp.csv.gz"
-  # , "nursery_samp.csv.gz"
+  , "nursery_samp.csv.gz"
   , "rcdv_samp.csv.gz"
 )
 
