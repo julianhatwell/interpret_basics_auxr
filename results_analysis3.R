@@ -1,28 +1,33 @@
 library(dplyr)
+library(ggplot2)
+library(Rmpfr)
 
+# sensitivity analysis
 plots_b <- list()
 bins_check <- list()
 plots_w <- list()
 weights_check <- list()
 plots_r <- list()
+analysis_out <- list()
+
+measures <- c("precision.tt.", "stability.tt.", "xcoverage.tt.", "rule.length")
+measure <- measures[2]
 
 for (ds in datasetnames) {
-  analysis <- main_results %>% 
+  analysis <- sens_results %>% 
     filter(dataset == ds) %>%
     mutate(support = factor(support)
            , alpha_paths = factor(alpha_paths)
            , disc_path_bins = factor(disc_path_bins)
            , score_func = factor(score_func)
            , weighting = weighting)
-  measures <- c("stability.tt.", "xcoverage.tt.", "rule.length")
-  measure <- measures[1]
-  mean_stab <- tapply(analysis[, measure]
-                      , list(support = analysis$support
-                             , alpha = analysis$alpha_paths
-                             , bins = analysis$disc_path_bins
-                             , func = analysis$score_func
-                             , weights = analysis$weighting)
-                      , mean)
+  # mean_stab <- tapply(analysis[, measure]
+  #                     , list(support = analysis$support
+  #                            , alpha = analysis$alpha_paths
+  #                            , bins = analysis$disc_path_bins
+  #                            , func = analysis$score_func
+  #                            , weights = analysis$weighting)
+  #                     , mean)
   
   analysis_groups <- with(analysis, expand.grid(
     support = unique(support)
@@ -45,17 +50,18 @@ for (ds in datasetnames) {
   analysis_values <- matrix(unlist(analysis_values), ncol = nrow(analysis_groups))
   
   analysis_groups$mean <- apply(analysis_values, 2, mean)
-  analysis_groups$mean_rank <- colMeans(t(apply(-analysis_values, 1, rank)))
+  analysis_groups$rank_mean <- colMeans(t(apply(-analysis_values, 1, rank)))
+  analysis_groups$rank_sum <- colSums(t(apply(-analysis_values, 1, rank)))
   
   plots_b[[ds]] <- ggplot(
     data = analysis_groups
-    , aes(y = mean_rank # I(1-mean)
+    , aes(y = rank_sum # I(1-mean)
           , x = id
           , shape = alpha
           , colour = func
           , size = support)) +
     geom_point() + 
-    scale_color_grey() +
+    # scale_color_grey() +
     scale_size_discrete(range = c(2, 4)) +
     theme_bw() +
     facet_grid(weights~bins)
@@ -104,7 +110,7 @@ for (ds in datasetnames) {
   analysis_included_values <- analysis_values[, analysis_groups_chisq$id]
   
   analysis_groups_chisq$mean <- apply(analysis_included_values, 2, mean)
-  analysis_groups_chisq$mean_rank <- colMeans(t(apply(-analysis_included_values, 1, rank)))
+  analysis_groups_chisq$rank_mean <- colMeans(t(apply(-analysis_included_values, 1, rank)))
   
   plots_r[[ds]] <- ggplot(
     data = analysis_groups_chisq
@@ -118,18 +124,66 @@ for (ds in datasetnames) {
     scale_size_discrete(range = c(2, 4)) +
     theme_bw()
   
+  analysis_out[[ds]] <- list()
+  analysis_out[[ds]][["sens_blocks"]] <- analysis_groups_chisq
+  analysis_out[[ds]][["sens_values"]] <- analysis_included_values
+  analysis_out[[ds]][["sens_raw"]] <- sens_results %>% filter(
+    dataset_name == ds & disc_path_bins == 4 & weighting == "chisq"
+  )
+  analysis_out[[ds]][["sens_frd.tt"]] <- friedman.test(analysis_included_values)
+}
+
+# comparative analysis
+for (ds in datasetnames) {
+  
+  analysis <- comp_results %>% 
+    filter(dataset_name == ds)
+
+  analysis_values <- tapply(analysis[, measure]
+                      , analysis$algorithm
+                      , identity)
+  analysis_values <- matrix(unlist(analysis_values), ncol = length(algorithms))
+  
+  analysis_out[[ds]][["comp_frd.tt"]] <- friedman.test(analysis_values)
+  # CHIRPS post hoc tests here
+  
+  analysis_out[[ds]][["comp_raw"]] <- analysis
+  analysis_out[[ds]][["comp_values"]] <- analysis_values
   
 }
 
-analysis_groups_chisq
+# exact p-values for sensitivity
+for (ds in datasetnames) {
+  rs <- with(analysis_out[[ds]]
+             , sens_blocks[order(-sens_blocks$rank_sum),])[, "rank_sum"]
+  k <- length(rs)
+  d <- (rs[1] - rs)[-1]
+  n <- nrow(analysis_out[[ds]]$sens_values)
+  analysis_out[[ds]]$sens_posthoc_pvalues # p value for best is signif better than others
+}
 
-bins_check
-weights_check
+# p-value to beat for sens post hoc
+0.05 / 17
+
+# p-value to beat for CHIRPS post - hoc
+0.05 / 4
+
+with(analysis_out$adult_small_samp
+     , sens_blocks[order(-sens_blocks$mean),])
+with(analysis_out$adult_small_samp
+     , sens_blocks[order(-sens_blocks$rank_sum),])
+
+analysis_out$adult_small_samp$sens_frd.tt
+
+rs <- with(analysis_out$adult_small_samp
+     , sens_blocks[order(-sens_blocks$rank_sum),])[, "rank_sum"]
+k <- length(rs)
+d <- (rs[1] - rs)[-1]
+n <- nrow(analysis_out$adult_small_samp$sens_values)
+
+# pexactfrsd(d,k,n, "pvalue")
 
 
 
-
-
-rank(-analysis_values[1, ])
-
-analysis_simp <- analysis %>% select(support, alpha_paths, disc_path_bins, score_func, weighting, stability.tt.)
+# comp_results_means <- apply(analysis_values, 2, mean)
+# com_results_mean_ranks <- colMeans(t(apply(-analysis_values, 1, rank)))

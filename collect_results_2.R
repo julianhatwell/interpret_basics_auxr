@@ -51,12 +51,56 @@ for (i in seq_along(resfilesdirs)) {
                                              , weighting)))
       
       if (count == 1) {
-        main_results <- results
+        sens_results <- results
       } else {
-        main_results <- rbind(main_results, results)
+        sens_results <- rbind(sens_results, results)
       }
       count <- count + 1
     }
   }
 }
 
+
+# comparative analysis
+algorithms <- c("Anchors", "BRL", "defragTrees", "inTrees")
+patt <- paste0("(", paste(algorithms, collapse = ")|("), ")")
+
+
+# need a way to identify the best CHIRPS
+first_comp <- TRUE
+first_comp_summ <- TRUE
+for (i in seq_along(resfilesdirs)) {
+  datasetname <- datasetnames[i]
+  filepath <- normalizePath(file.path(resfilesdirs[i]))
+  filenames <- dir(filepath)
+  for (fn in filenames) {
+    if (grepl(patt, fn)) {
+      # load a sheet
+      results <- read.csv(normalizePath(file.path(filepath, fn))
+                          , stringsAsFactors = FALSE)
+      
+      if (!grepl("summary", fn)) {
+        print("in main")
+        print(fn)
+        
+        if (first_comp == TRUE) {
+          comp_results <- results
+          first_comp <- FALSE
+        } else {
+          names(results) <- names(comp_results)
+          comp_results <- rbind(comp_results, results)
+        }
+      } else { # summary
+        print("in summary")
+        print(fn)
+        
+        if (first_comp_summ == TRUE) {
+          comp_summ_results <- results
+          first_comp_summ <- FALSE
+        } else {
+          comp_summ_results <- rbind(comp_summ_results, results)
+        }
+      }
+    }
+  }
+}
