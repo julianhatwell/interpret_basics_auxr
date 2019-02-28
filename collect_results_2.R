@@ -80,9 +80,6 @@ for (i in seq_along(resfilesdirs)) {
                           , stringsAsFactors = FALSE)
       
       if (!grepl("summary", fn)) {
-        print("in main")
-        print(fn)
-        
         if (first_comp == TRUE) {
           comp_results <- results
           first_comp <- FALSE
@@ -91,9 +88,6 @@ for (i in seq_along(resfilesdirs)) {
           comp_results <- rbind(comp_results, results)
         }
       } else { # summary
-        print("in summary")
-        print(fn)
-        
         if (first_comp_summ == TRUE) {
           comp_summ_results <- results
           first_comp_summ <- FALSE

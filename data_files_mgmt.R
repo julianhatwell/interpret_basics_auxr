@@ -9,12 +9,12 @@ class_cols <- c(
   "income"
   , "y"
   , "acceptability"
-, "NSP"
+  , "NSP"
   , "A16"
   , "rating"
-  # , "loan_status"
-, "decision"
-  , "recid"
+  , "loan_status"
+  , "decision"
+  # , "recid"
 )
 
 data_files <- c(
@@ -24,9 +24,9 @@ data_files <- c(
   , "cardio.csv.gz"
   , "credit.csv.gz"
   , "german.csv.gz"
-  # , "lending_tiny_samp.csv.gz"
+  , "lending_tiny_samp.csv.gz"
   , "nursery_samp.csv.gz"
-  , "rcdv_samp.csv.gz"
+  # , "rcdv_samp.csv.gz"
 )
 
 get_datasetnames <- function(x) {

@@ -69,21 +69,6 @@ overlapping(decision~., data = nursery_simple) # T2 and T3 are slightly less
 # complexity(decision~., data = nursery) 
 
 
-sup <- round((rpois(10, 2) + 1) * 100 + rnorm(10, 0, 25))
-len <- rpois(10, 2) + 1
-scr <- function(s, l, a) {
-  log(s) * (l - a)/l
-}
-a_vec <- seq(-1, 1, 0.1)
-scrs <- t(sapply(a_vec, function(x) {mapply(FUN = scr, sup, len, a = x)}))
-
-matplot(scrs, pch = as.character(len)
-        , type = "o"
-        , col = rainbow(ncol(scrs))
-        , xaxt = "n")
-axis(1, at=seq_along(a_vec), labels = a_vec)
-abline(v = which(a_vec == 0))
-
 # scoring function
 precis <- c(0.5507246376811594,
             0.5518018018018018,
