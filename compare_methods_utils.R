@@ -106,6 +106,12 @@ evaluate <- function(prior_labels, post_idx, classes) {
                     , chisq = chisq))
 }
 
+get_train_test_sizes <- function(i) {
+  train_idx <- read.csv(paste0(resfilesdirs[i], "train_index.csv"), header = FALSE)$V1 + 1
+  test_idx <- read.csv(paste0(resfilesdirs[i], "test_index.csv"), header = FALSE)$V1 + 1
+  return(c(length(train_idx), length(test_idx)))
+}
+
 data_prep <- function(i) {
   dat <- read.csv(gzfile(paste0(data_dir, data_files[i])))
   # ensure y is a factor

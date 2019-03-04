@@ -65,7 +65,6 @@ for (i in seq_along(resfilesdirs)) {
 algorithms <- c("Anchors", "BRL", "defragTrees", "inTrees")
 patt <- paste0("(", paste(algorithms, collapse = ")|("), ")")
 
-
 # need a way to identify the best CHIRPS
 first_comp <- TRUE
 first_comp_summ <- TRUE

@@ -11,17 +11,16 @@ scr <- function(s, l, a) {
 a_vec <- seq(0, 1, 0.1)
 scrs <- t(sapply(a_vec, function(x) {mapply(FUN = scr, sup, len2, a = x)}))
 
-tikz(file = "score_func_sim.tikz")
+tikz(file = "score_func_sim.tikz", height = 4, width = 7)
 matplot(scrs, pch = as.character(len2)
         , type = "o"
         , col = rainbow(ncol(scrs))
         , xaxt = "n"
         , main = "Score function simulation"
         , xlab = expression(alpha)
-        , ylab = expression(paste("Score: If "
-                                  , alpha
-                                  , " = 0 then Score = Support "
-                                  , sep = "  ")))
+        , ylab = "Score")
 axis(1, at=seq_along(a_vec), labels = a_vec)
-# text(scrs[1,]~rep(2.5, 10), labels = round(sup, 4), cex=0.75)
+text(8, 0.9, labels = "N = rule length", col = 2)
+dev.off()
+
 # abline(v = which(a_vec == 0))

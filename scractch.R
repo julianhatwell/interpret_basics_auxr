@@ -134,3 +134,106 @@ score <- mapply(sf, precis2, cover2, card2, alpha) # * card2 / 2
 score2 <- ((lf(precis2) + lf(cover2)) ) * card2 / (1 + card2^2)
 score3 <- lf(acc2 * card2 / (1 + card2^2))
 matplot(matrix(c(precis2, cover2, acc2, score, score2, score3), ncol = 6), type = "l")
+
+
+# analysis_groups$mean <- apply(analysis_values, 2, mean)
+# analysis_groups$rank_mean <- colMeans(t(apply(-analysis_values, 1, rank)))
+# analysis_groups$rank_sum <- colSums(t(apply(-analysis_values, 1, rank)))
+# 
+# bins_plot <- ggplot(
+#   data = analysis_groups
+#   , aes(y = mean
+#         , x = id
+#         , shape = alpha
+#         , colour = func
+#         , size = support)) +
+#   geom_point() + 
+#   # scale_color_grey() +
+#   scale_size_discrete(range = c(2, 4)) +
+#   theme_bw() +
+#   facet_grid(weights~bins)
+
+analysis_groups_8 <- analysis_groups %>% filter(bins == 8)
+
+
+analysis_bins_check <- inner_join(analysis_groups_4, analysis_groups_8
+                                  , by = c("support", "alpha", "func", "weights")
+                                  , suffix = c("_4", "_8"))
+
+rank_total <- tail(cumsum(1:nrow(analysis_values)), 1)
+wilcos <- list()
+for (i in 1:nrow(analysis_bins_check)) {
+  wilcos[[i]] <- wilcox.test(analysis_values[, analysis_bins_check$id_4[i]]
+                             , analysis_values[, analysis_bins_check$id_8[i]]
+                             , paired = TRUE, conf.int = TRUE)
+}
+
+bins_wilcos <- logical(length(wilcos))
+for (i in 1:length(wilcos)) { bins_wilcos[i] <- wilcos[[i]]$p.value < 0.05 / length(wilcos) }
+mean(bins_wilcos)
+
+eff_sizes <- numeric(0)  
+for(wb in which(bins_wilcos)) {eff_sizes <- c(eff_sizes, wilcos[[wb]]$statistic/rank_total)}
+
+wilcos <- list()
+for (i in 1:nrow(analysis_weights_check)) {
+  wilcos[[i]] <- wilcox.test(analysis_values[, analysis_bins_check$id_4[i]]
+                             , analysis_values[, analysis_bins_check$id_8[i]]
+                             , paired = TRUE, conf.int = TRUE)
+}
+
+bins_wilcos <- logical(length(wilcos))
+for (i in 1:length(wilcos)) { bins_wilcos[i] <- wilcos[[i]]$p.value < 0.05 / length(wilcos) }
+mean(bins_wilcos)
+
+# bins_wilcox <- wilcox.test(analysis_bins_check$mean_4
+#                           , analysis_bins_check$mean_8
+#                           , paired = TRUE)
+bins_wilcox <- wilcox.test(analysis_values[, analysis_bins_check$id_4]
+                           , analysis_values[, analysis_bins_check$id_8]
+                           , paired = TRUE
+                           , conf.int = TRUE
+                           , conf.level = 0.99)
+
+bins_effect_size <- mean(analysis_values[, analysis_bins_check$id_4] -
+                           analysis_values[, analysis_bins_check$id_8]) /
+  sd(analysis_values[, analysis_bins_check$id_4] -
+       analysis_values[, analysis_bins_check$id_8])
+
+# we know we only need to keep bins_4
+analysis_groups_chisq <- analysis_groups_4 %>% filter(weights == "chisq")
+analysis_groups_nothing <- analysis_groups_4 %>% filter(weights == "nothing")
+
+analysis_weights_check <- inner_join(analysis_groups_chisq, analysis_groups_nothing
+                                     , by = c("support", "alpha", "func")
+                                     , suffix = c("_chisq", "_nothing")) %>%
+  select(-weights_chisq, -weights_nothing)
+
+# weights_wilcox <- wilcox.test(analysis_weights_check$mean_chisq
+#                              , analysis_weights_check$mean_nothing
+#                              , paired = TRUE)
+
+weights_wilcox <- wilcox.test(analysis_values[, analysis_weights_check$id_chisq]
+                              , analysis_values[, analysis_weights_check$id_nothing]
+                              , paired = TRUE
+                              , conf.int = TRUE
+                              , conf.level = 0.99)
+
+weights_effect_size <- mean(analysis_values[, analysis_weights_check$id_chisq] -
+                              analysis_values[, analysis_weights_check$id_nothing]) /
+  sd(analysis_values[, analysis_weights_check$id_chisq] -
+       analysis_values[, analysis_weights_check$id_nothing])
+
+analysis_groups_chisq$mean <- apply(analysis_included_values, 2, mean)
+analysis_groups_chisq$rank_mean <- colMeans(t(apply(-analysis_included_values, 1, rank)))
+
+best_blocks_plot <- ggplot(
+  data = analysis_groups_chisq
+  , aes(y = mean
+        , x = id
+        , shape = alpha
+        , colour = func
+        , size = support)) +
+  geom_point() + 
+  scale_size_discrete(range = c(2, 4)) +
+  theme_bw()
