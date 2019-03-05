@@ -3,6 +3,7 @@ library(ggplot2)
 library(Rmpfr)
 library(gridExtra)
 library(tikzDevice)
+library(stargazer)
 
 # pexact function for post hoc wilcox tests
 pexactfrsd <- function(d,k,n,option) {
@@ -168,16 +169,15 @@ get_CHIRPS_analysis <- function(measure) {
 
 # comparative analysis
 get_comparative_analysis <- function(measure, analysis_in) {
+  
   for (ds in datasetnames) {
     
-    analysis_out <- analysis_in
-    
+    # isolate and transform for one dataset
     analysis <- comp_results %>% 
       filter(dataset_name == ds) %>%
       mutate(# covered is test set size - 1  * coverage (because of LOO)
         covered.tt. = ((test_set_size[ds] - 1) * coverage.tt.)
         # covered correct is (covered + 1 (explanandum)) * stability
-        # , cc.tt. = (covered.tt. + 1) * stability.tt.
         , cc.tt. = covered.tt. * precision.tt.
         # covered incorrect is covered - cc
         , ci.tt. = covered.tt. - cc.tt.
@@ -185,47 +185,79 @@ get_comparative_analysis <- function(measure, analysis_in) {
         , odds.tt.lapl. = (cc.tt. + 1 + 1/n_classes[ds])/(ci.tt. + (n_classes[ds] - 1) + (n_classes[ds] - 1)/n_classes[ds])
         , lodds.tt.lapl. = log(odds.tt.lapl.))
     
-    
+    # transpose the raw values for analysis
     analysis_values <- tapply(analysis[, measure]
                               , analysis$algorithm
                               , identity)
     
     algos <- names(analysis_values) # no brl for cardio or nursery, no lending for brl or intrees
-    bonf.conf.level <- 1 - 0.05/length(algos)
-    
-    
+
     analysis_values <- matrix(unlist(analysis_values), ncol = length(algos))
     analysis_values <- cbind(analysis_values, analysis_out[[ds]]$ds_bestranksum_values)
     
+    # collect
     algos <- c(algos, "CHIRPS")
     colnames(analysis_values) <- algos
+    analysis_in[[ds]][["comp_raw"]] <- analysis
+    analysis_in[[ds]][["comp_values"]] <- analysis_values
     
-    analysis_out[[ds]][["comp_frd.tt"]] <- friedman.test(analysis_values)
-    # CHIRPS post hoc tests here
-    wilcos <- list()
-    for (j in 1:(length(algos)-1)) {
-      wilcos[[algos[j]]] <- wilcox.test(analysis_values[,length(algos)], analysis_values[, j]
-                                        , paired = TRUE, conf.int = TRUE, conf.level = bonf.conf.level)
-      
-      wilcos[[algos[j]]]$data.name <- paste(algos[j], "and CHIRPS")
-      
-      rank_sum_total <- tail(cumsum(1:nrow(analysis_values)), 1)
-      
-      wilcos[[algos[j]]]$effect_size <- wilcos[[algos[j]]]$statistic/rank_sum_total
-      
-      # exact p values
-      k <- length(algos)
-      n <- nrow(analysis_values)
-      rank_sums <- apply(apply(-analysis_values, 1, rank), 1, sum)
-      d <- abs(rank_sums[j] - rank_sums["CHIRPS"])
-      wilcos[[algos[j]]]$p.value <- pexactfrsd(d,k,n, "pvalue")
-    }
+    # friedman test
+    analysis_in[[ds]][["comp_frd.tt"]] <- friedman.test(analysis_values)
+    chisqstat <- analysis_in[[ds]][["comp_frd.tt"]]$statistic
+    df1 <- analysis_in[[ds]][["comp_frd.tt"]]$parameter
+    N <- nrow(analysis_values)
+    fstat <- (chisqstat * (N - 1)) / (N * df1 - chisqstat)
+    names(fstat) <- "Friedman F"
+    df2 <- df1 * (N - 1)
+    fpvalue <- pf(fstat, df1=df1, df2=df2, lower.tail = FALSE)
     
-    analysis_out[[ds]][["comp_wilcox.tt"]] <- wilcos
-    analysis_out[[ds]][["comp_raw"]] <- analysis
-    analysis_out[[ds]][["comp_values"]] <- analysis_values
+    # collect
+    analysis_in[[ds]][["comp_frd.tt"]][["F.statistic"]] <- fstat
+    analysis_in[[ds]][["comp_frd.tt"]][["F.p.value"]] <- fpvalue
+    analysis_in[[ds]][["comp_frd.tt"]][["F.N"]] <- N
+    analysis_in[[ds]][["comp_frd.tt"]][["F.df1"]] <- df1
+    analysis_in[[ds]][["comp_frd.tt"]][["F.df2"]] <- df2
   }
-  return(analysis_out)
+  return(analysis_in)
+}
+
+results_in_detail <- function(analysis_in, rounding = 2) {
+  for (ds in datasetnames) {
+    print(ds)
+    print("mean qm")
+    print(round(apply(analysis_in[[ds]]$comp_values, 2, mean), rounding))
+    print("sd qm")
+    print(round(apply(analysis_in[[ds]]$comp_values, 2, sd), rounding))
+    print("min qm")
+    print(round(apply(analysis_in[[ds]]$comp_values, 2, min), rounding))
+    print("max qm")
+    print(round(apply(analysis_in[[ds]]$comp_values, 2, max), rounding))
+    mr <- apply(apply(-analysis_in[[ds]]$comp_values, 1, rank), 1, mean)
+    print("mean ranks")
+    print(round(mr, rounding))
+    print("Fried test")
+    fstat <- analysis_in[[ds]][["comp_frd.tt"]][["F.statistic"]]
+    df1 <- analysis_in[[ds]][["comp_frd.tt"]][["F.df1"]]
+    df2 <- analysis_in[[ds]][["comp_frd.tt"]][["F.df2"]]
+    N <- analysis_in[[ds]][["comp_frd.tt"]][["F.N"]]
+    f.p.value <- analysis_in[[ds]][["comp_frd.tt"]][["F.p.value"]]
+    print(c(fstat, df1, df2, N, f.p.value))
+    print("post hoc tests")
+    algs <- names(mr)[names(mr) != "CHIRPS"]
+    k <- analysis_in[[ds]]$comp_frd.tt$parameter + 1
+    md <- mr[algs] - mr["CHIRPS"]
+    print("rank diff")
+    print(round(md, rounding))
+    z <- (md) / sqrt((k * (k + 1)) / (6 * N))
+    ztest <- pnorm(z, lower.tail = FALSE)
+    print("z stat")
+    print(z)
+    print("post-hoc z-test")
+    print(ztest)
+    print("reject null bonferroni")
+    print(ztest < 0.025/df1)
+    print(0.025/df1)
+  }
 }
 
 measures <- c("stability.tr.lapl.", "precision.tt.", "stability.tt.lapl.", "xcoverage.tt.", "rule.length")
@@ -239,4 +271,14 @@ for (ds in datasetnames) {
 }
 
 measure <- "stability.tt.lapl."
-analysis_out <- get_comparative_analysis(measure, analysis_out)
+stab_tt_analysis_out <- get_comparative_analysis(measure, analysis_out)
+measure <- "precision.tt."
+prec_tt_analysis_out <- get_comparative_analysis(measure, analysis_out)
+measure <- "xcoverage.tt."
+xcov_tt_analysis_out <- get_comparative_analysis(measure, analysis_out)
+measure <- "rule.length"
+rlen_tt_analysis_out <- get_comparative_analysis(measure, analysis_out)
+
+results_in_detail(stab_tt_analysis_out, rounding = 4)
+
+
