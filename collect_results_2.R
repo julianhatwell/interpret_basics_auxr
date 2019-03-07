@@ -97,3 +97,5 @@ for (i in seq_along(resfilesdirs)) {
     }
   }
 }
+names(comp_results) <- sub("_name", "", names(comp_results))
+
