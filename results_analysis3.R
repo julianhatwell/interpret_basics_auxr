@@ -1,8 +1,5 @@
 library(dplyr)
 library(ggplot2)
-library(gridExtra)
-library(tikzDevice)
-library(stargazer)
 
 # fudge until added absolute coverage, train and test set sizes to results
 train_set_size <- integer(length(datasetnames))
@@ -55,7 +52,9 @@ laplace_corrections <- function(results_set, datasetname, sensitivity = TRUE) {
   return(analysis_out)
 }
 
-get_CHIRPS_analysis <- function(measure, results_set) {
+get_CHIRPS_analysis <- function(measure, results_set
+                                , top_mean_block = NA
+                                , top_ranksum_block = NA) {
   # sensitivity analysis
   analysis_out <- list()
 
@@ -114,9 +113,34 @@ get_CHIRPS_analysis <- function(measure, results_set) {
   # collect groups results
   analysis_out[[ds]][["analysis_groups"]] <- analysis_groups
   
-  # which is the best mean measure
-  analysis_out[[ds]][["top_mean_block"]] <- which.max(analysis_out[[ds]]$analysis_groups$mean)
-  analysis_out[[ds]][["top_ranksum_block"]] <- which.max(analysis_out[[ds]]$analysis_groups$rank_sum)
+  # which is the best mean measure discover or feed in from best stability
+  if (is.na(top_mean_block)) {
+    ds_top_mean_block <- which.max(analysis_out[[ds]]$analysis_groups$mean)
+  } else {
+    ds_top_mean_block <- top_mean_block
+  }
+  analysis_out[[ds]][["top_mean_block"]] <- ds_top_mean_block
+  
+  if (is.na(top_ranksum_block)) {
+    ds_top_ranksum_block <- which.max(analysis_out[[ds]]$analysis_groups$rank_sum)
+  } else {
+    ds_top_ranksum_block <- top_ranksum_block
+  }
+  analysis_out[[ds]][["top_ranksum_block"]] <- ds_top_ranksum_block
+  
+  top_group_stats <- filter(analysis_groups, id == ds_top_ranksum_block) %>%
+    dplyr::select(support, alpha, bins, func, weights)
+  
+  analysis_out[[ds]][["ds_bestmean_values"]] <- analysis_out[[ds]]$analysis_values[, analysis_out[[ds]][["top_mean_block"]]]
+  analysis_out[[ds]][["ds_bestranksum_values"]] <- analysis_out[[ds]]$analysis_values[, analysis_out[[ds]][["top_ranksum_block"]]]
+  
+  sens_raw <- analysis %>% filter(support == top_group_stats$support
+                                  , alpha_paths == top_group_stats$alpha
+                                  , disc_path_bins == top_group_stats$bins
+                                  , score_func == top_group_stats$func
+                                  , weighting == top_group_stats$weights)
+  
+  analysis_out[[ds]][["sens_raw"]] <- sens_raw
   }
   
   mean_all_ds <- matrix(NA
@@ -137,8 +161,6 @@ get_CHIRPS_analysis <- function(measure, results_set) {
   for (ds in datasetnames) {
     analysis_out[[ds]][["overall_bestmean_values"]] <- analysis_out[[ds]]$analysis_values[, analysis_out$overall_bestmean_block]
     analysis_out[[ds]][["overall_bestranksum_values"]] <- analysis_out[[ds]]$analysis_values[, analysis_out$overall_bestranksum_block]
-    analysis_out[[ds]][["ds_bestmean_values"]] <- analysis_out[[ds]]$analysis_values[, analysis_out[[ds]][["top_mean_block"]]]
-    analysis_out[[ds]][["ds_bestranksum_values"]] <- analysis_out[[ds]]$analysis_values[, analysis_out[[ds]][["top_ranksum_block"]]]
   }
   
   return(analysis_out)
@@ -188,7 +210,7 @@ get_comparative_analysis <- function(measure, results_set, CHIRPS_analysis) {
   return(CHIRPS_analysis)
 }
 
-results_in_detail <- function(analysis_in, rounding = 2) {
+results_in_detail <- function(analysis_in, rounding = 2, sgn = -1) {
   for (ds in datasetnames) {
     print(ds)
     print("mean qm")
@@ -199,7 +221,9 @@ results_in_detail <- function(analysis_in, rounding = 2) {
     print(round(apply(analysis_in[[ds]]$comp_values, 2, min), rounding))
     print("max qm")
     print(round(apply(analysis_in[[ds]]$comp_values, 2, max), rounding))
-    mr <- apply(apply(-analysis_in[[ds]]$comp_values, 1, rank), 1, mean)
+    print("med qm")
+    print(round(apply(analysis_in[[ds]]$comp_values, 2, median), rounding))
+    mr <- apply(apply(sgn * analysis_in[[ds]]$comp_values, 1, rank), 1, mean)
     print("mean ranks")
     print(round(mr, rounding))
     print("Fried test")
@@ -243,26 +267,94 @@ tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4)
 
 measure <- "precision.tt."
-CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results)
+CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
+                                       , top_mean_block = CHIRPS_analysis[[ds]][["top_mean_block"]]
+                                       , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4)
 
 measure <- "xcoverage.tt.lapl."
-CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results)
+CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
+                                       , top_mean_block = CHIRPS_analysis[[ds]][["top_mean_block"]]
+                                       , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4)
 
 measure <- "rule.length"
-CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results)
+CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
+                                       , top_mean_block = CHIRPS_analysis[[ds]][["top_mean_block"]]
+                                       , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
-results_in_detail(tt_analysis, rounding = 4)
+results_in_detail(tt_analysis, rounding = 4, sgn = 1) # positive ranking. shortest wins
 
 measure <- "recall.tt."
-CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results)
+CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
+                                       , top_mean_block = CHIRPS_analysis[[ds]][["top_mean_block"]]
+                                       , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4)
 
 measure <- "f1.tt."
-CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results)
+CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
+                                       , top_mean_block = CHIRPS_analysis[[ds]][["top_mean_block"]]
+                                       , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4)
+
+
+measure <- "rule.length"
+CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
+                                       , top_mean_block = CHIRPS_analysis[[ds]][["top_mean_block"]]
+                                       , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
+tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
+results_in_detail(tt_analysis, rounding = 4, sgn = 1) # positive ranking. shortest wins
+
+for (ds in datasetnames) {
+  A_rules <- with(tt_analysis[[ds]]$comp_raw
+                  , tt_analysis[[ds]]$comp_raw[algorithm == "Anchors"
+                                              , c("pretty.rule", "rule.length")])
+
+  B_rules <- with(tt_analysis[[ds]]$comp_raw
+                  , tt_analysis[[ds]]$comp_raw[algorithm == "BRL"
+                                              , c("pretty.rule", "rule.length")])
+
+  D_rules <- with(tt_analysis[[ds]]$comp_raw
+                  , tt_analysis[[ds]]$comp_raw[algorithm == "defragTrees"
+                                              , c("pretty.rule", "rule.length")])
+  
+  I_rules <- with(tt_analysis[[ds]]$comp_raw
+                  , tt_analysis[[ds]]$comp_raw[algorithm == "inTrees"
+                                              , c("pretty.rule", "rule.length")])
+  
+  C_rules <- with(tt_analysis[[ds]]$sens_raw
+                  , tt_analysis[[ds]]$sens_raw[, c("pretty.rule", "rule.length")])
+  
+  uniques <- c(length(unique(A_rules$pretty.rule))
+               , length(unique(B_rules$pretty.rule))
+               , length(unique(D_rules$pretty.rule))
+               , length(unique(I_rules$pretty.rule))
+               , length(unique(C_rules$pretty.rule)))
+  
+  names(uniques) <- c("A", "B", "D", "I", "C")
+  print(ds)
+  print(uniques)
+}
+
+measure <- "mean_rule_cascade"
+analysis <- comp_summ_results
+# transpose the raw values for analysis
+analysis_values <- tapply(analysis[, measure]
+                          , list(analysis$dataset_name
+                                 , analysis$algorithm)
+                          , identity)
+
+print(analysis_values)
+
+analysis <- comp_summ_results
+# transpose the raw values for analysis
+analysis_values <- tapply(analysis[, measure]
+                          , list(analysis$dataset_name
+                                 , analysis$algorithm)
+                          , identity)
+
+print(analysis_values)

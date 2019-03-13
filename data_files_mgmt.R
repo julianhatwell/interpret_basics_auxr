@@ -8,11 +8,11 @@ project_dir <- "V:\\whiteboxing\\"
 n_classes <- c(adult_small_samp = 2
                , bankmark_samp = 2
                , car = 2
-               , cardio = 3
+               #, cardio = 3
                , credit = 2
                , german = 2
-               , lending_tiny_samp = 2
-               , nursery_samp = 4
+               #, lending_tiny_samp = 2
+               #, nursery_samp = 4
                , rcdv_samp = 2
                )
 
@@ -20,11 +20,11 @@ class_cols <- c(
   "income"
   , "y"
   , "acceptability"
-  , "NSP"
+  #, "NSP"
   , "A16"
   , "rating"
-  , "loan_status"
-  , "decision"
+  #, "loan_status"
+  #, "decision"
   , "recid"
 )
 
@@ -32,11 +32,11 @@ data_files <- c(
   "adult_small_samp.csv.gz"
   , "bankmark_samp.csv.gz"
   , "car.csv.gz"
-  , "cardio.csv.gz"
+  #, "cardio.csv.gz"
   , "credit.csv.gz"
   , "german.csv.gz"
-  , "lending_tiny_samp.csv.gz"
-  , "nursery_samp.csv.gz"
+  #, "lending_tiny_samp.csv.gz"
+  #, "nursery_samp.csv.gz"
   , "rcdv_samp.csv.gz"
 )
 

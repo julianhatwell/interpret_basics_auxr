@@ -1,3 +1,4 @@
+library(psych)
 library(randomForest)
 library(foreach)
 library(doParallel)
@@ -151,6 +152,7 @@ for (rnr in 1:results_nrows) {
                     , n_instances = n_test
                     , n_rules = benchmark$unique_rules
                     , n_rules_used = benchmark$n_rules_used
+                    , median_rule_cascade = benchmark$median_rule_cascade
                     , mean_rule_cascade = benchmark$mean_rule_cascade
                     , sd_rule_cascade = benchmark$sd_rule_cascade
                     , mean_rulelen = benchmark$mean_rulelen
@@ -158,9 +160,14 @@ for (rnr in 1:results_nrows) {
                     , begin_time = as.character(benchmark$begin_time)
                     , completion_time = as.character(benchmark$completion_time)
                     , forest_performance = f_perf
-                    , sd_forest_performance = (f_perf/(1-f_perf))/length(forest_label)
-                    , sd_proxy_performance = (p_perf/(1-p_perf))/length(benchmark$model_accurate)
-                    , sd_fidelity = (fid/(1-fid))/n_test
+                    , sd_forest_performance = sqrt((f_perf/(1-f_perf))/length(forest_label))
+                    , proxy_performance = p_perf
+                    , sd_proxy_performance = sqrt((p_perf/(1-p_perf))/length(benchmark$model_accurate))
+                    , kappa = cohen.kappa(table(factor(benchmark$label
+                                                       , levels = levels(factor(forest_label)))
+                                                , factor(forest_label)))$kappa
+                    , fidelity = fid
+                    , sd_fidelity = sqrt((fid/(1-fid))/n_test)
             ), file = paste0(resfilesdirs[i], algorithm, "_rnst_", random_states[r], "_summary.csv")
           )
           

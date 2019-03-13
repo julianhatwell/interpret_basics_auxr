@@ -227,6 +227,7 @@ inTrees_benchmark <- function(forest, ds_container, ntree, maxdepth) {
               , unique_rules = nrow(learner)
               , n_rules_used = length(unique(rule_idx))
               , rule = learner[rule_idx, 4]
+              , median_rule_cascade = median(rule_idx)
               , mean_rule_cascade = mean(rule_idx)
               , sd_rule_cascade = sd(rule_idx)
               , mean_rulelen = mean(rl_ln)
@@ -306,6 +307,7 @@ sbrl_benchmark <- function(ds_container, classes) {
               , unique_rules = length(model$rs$V1)
               , n_rules_used = length(unique(rule_idx))
               , rule = rule
+              , median_rule_cascade = median(rule_pos)
               , mean_rule_cascade = mean(rule_pos)
               , sd_rule_cascade = sd(rule_pos)
               , mean_rulelen = mean(rl_ln)

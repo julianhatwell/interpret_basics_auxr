@@ -60,12 +60,10 @@ for (i in seq_along(resfilesdirs)) {
   }
 }
 
-
 # comparative analysis
 algorithms <- c("Anchors", "BRL", "defragTrees", "inTrees")
 patt <- paste0("(", paste(algorithms, collapse = ")|("), ")")
 
-# need a way to identify the best CHIRPS
 first_comp <- TRUE
 first_comp_summ <- TRUE
 for (i in seq_along(resfilesdirs)) {
@@ -99,3 +97,15 @@ for (i in seq_along(resfilesdirs)) {
 }
 names(comp_results) <- sub("_name", "", names(comp_results))
 
+# adjust 0-length rules to be valued as 1, {default}
+sens_results$rule.length <- ifelse(sens_results$rule.length == 0
+                                   , 1
+                                   , sens_results$rule.length)
+
+comp_results$rule.length <- ifelse(comp_results$rule.length == 0
+                                   , 1
+                                   , comp_results$rule.length)
+
+comp_results$pretty.rule[is.na(comp_results$pretty.rule)] <- "{default}"
+comp_results$pretty.rule[comp_results$pretty.rule == ""] <- "{default}"
+comp_results$pretty.rule[comp_results$pretty.rule == "[]"] <- "{default}"
