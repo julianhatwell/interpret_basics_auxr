@@ -1,4 +1,5 @@
 # collect_results
+library(dplyr)
 source("compare_methods_utils.R")
 
 # sensitivity analysis
@@ -85,6 +86,37 @@ for (i in seq_along(resfilesdirs)) {
           comp_results <- rbind(comp_results, results)
         }
       } else { # summary
+        if (!any(grepl("model_kappa", names(results)))) { # no kappa model column
+          results <- results %>%
+            mutate(model_kappa = NA)
+        }
+        if (!any(grepl("proxy_kappa", names(results)))) { # no kappa model column
+          results <- results %>%
+            mutate(proxy_kappa = NA)
+        }
+        if (!any(grepl("median_rule_cascade", names(results)))) { # no med rc column
+          results <- results %>%
+            mutate(median_rule_cascade = NA)
+        }
+        if (!any(grepl("^fidelity", names(results)))) { # no kappa model column
+          results <- results %>%
+            mutate(fidelity = NA)
+        }
+        if (!any(grepl("^proxy_performance", names(results)))) { # no med rc column
+          results <- results %>%
+            mutate(proxy_performance = NA)
+        }
+        # if (!any(grepl("sd_proxy_performance", names(results)))) { # no med rc column
+        #   results <- results %>%
+        #     mutate(median_rule_cascade = NA)
+        # }
+        results <- results %>%
+          dplyr::select(X, dataset_name, algorithm, n_instances, n_rules, n_rules_used
+                        , median_rule_cascade, mean_rule_cascade, sd_rule_cascade
+                        , mean_rulelen, sd_rulelen, begin_time, completion_time
+                        , forest_performance, sd_forest_performance
+                        , model_kappa, proxy_performance, sd_proxy_performance
+                        , proxy_kappa, fidelity, sd_fidelity)
         if (first_comp_summ == TRUE) {
           comp_summ_results <- results
           first_comp_summ <- FALSE

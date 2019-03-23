@@ -6,8 +6,8 @@ n_cores <- detectCores() - 2
 random_states <- 123 # :152
 source("compare_methods_utils.R")
 
-# algorithm <- "inTrees"
-algorithm <- "BRL"
+algorithm <- "inTrees"
+# algorithm <- "BRL"
 
 results_nrows <- length(random_states) * length(datasetnames)
 
@@ -161,9 +161,12 @@ for (rnr in 1:results_nrows) {
                     , completion_time = as.character(benchmark$completion_time)
                     , forest_performance = f_perf
                     , sd_forest_performance = sqrt((f_perf/(1-f_perf))/length(forest_label))
+                    , model_kappa = cohen.kappa(table(factor(names(forest_label)
+                                                       , levels = levels(factor(ds_container$y_test)))
+                                                , factor(ds_container$y_test)))$kappa
                     , proxy_performance = p_perf
                     , sd_proxy_performance = sqrt((p_perf/(1-p_perf))/length(benchmark$model_accurate))
-                    , kappa = cohen.kappa(table(factor(benchmark$label
+                    , proxy_kappa = cohen.kappa(table(factor(benchmark$label
                                                        , levels = levels(factor(forest_label)))
                                                 , factor(forest_label)))$kappa
                     , fidelity = fid

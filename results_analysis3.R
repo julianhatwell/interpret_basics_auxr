@@ -1,4 +1,5 @@
 library(dplyr)
+library(tidyr)
 library(ggplot2)
 
 # fudge until added absolute coverage, train and test set sizes to results
@@ -46,7 +47,8 @@ laplace_corrections <- function(results_set, datasetname, sensitivity = TRUE) {
            # covered incorrect is covered - cc
            , ci.tt. = covered.tt. - cc.tt.
            , stability.tt.lapl. = (cc.tt. + 1) / (covered.tt. + n_classes[datasetname] + 1) # laplace and stability
-           , xcoverage.tt.lapl. = (covered.tt. + 1) / (test_set_size[datasetname] + n_classes[datasetname] + 1) # laplace and xcoverage
+           , xcoverage.tt.lapl. = ((covered.tt. + 1) / (test_set_size[datasetname] + n_classes[datasetname] + 1)) * # laplace and xcoverage
+             ( ci.tt. / (ci.tt. + (test_set_size[datasetname] - covered.tt.)))
            , odds.tt.lapl. = (cc.tt. + 1 + 1/n_classes[datasetname])/(ci.tt. + (n_classes[datasetname] - 1) + (n_classes[datasetname] - 1)/n_classes[datasetname])
            , lodds.tt.lapl. = log(odds.tt.lapl.))
   return(analysis_out)
@@ -251,6 +253,79 @@ results_in_detail <- function(analysis_in, rounding = 2, sgn = -1) {
   }
 }
 
+source("C:\\Users\\id126493\\OneDrive\\Documents\\PhD\\KTheme.R")
+reds <- k.grad.red.rev(2)
+ongs <- k.grad.orange.rev(2)
+blus <- k.grad.blue.rev(2)
+grns <- k.grad.green.rev(2)
+prps <- k.grad.purple.rev(2)
+nuts <- myPalNeut
+algs <- c(algorithms, "CHIRPS")
+myPal <- c(reds[2], ongs[2], blus[2], grns[2], k.pink)
+myAlph <- c(rep(0.4, length(algs) - 1), 1)
+names(myPal) <- algs
+names(myAlph) <- algs
+colos <- scale_colour_manual(
+  values = myPal)
+alpas <- scale_alpha_manual(values = myAlph)
+
+
+results_in_plots <- function(analysis_in, rounding = 2, sgn = -1) {
+  nds <- length(datasetnames)
+  dmnms <- list(datasetnames, algs)
+  crt_mat <- function() {
+    matrix(NA
+          , ncol = length(algs)
+          , nrow = nds
+          , dimnames = dmnms)
+  }
+  mn_meas <- crt_mat()
+  sd_meas <- crt_mat()
+  se_meas <- crt_mat()
+  mr_meas <- crt_mat()
+  N <- numeric(nds)
+  for (i in seq_along(datasetnames)) {
+    mns <- apply(analysis_in[[datasetnames[i]]]$comp_values, 2, mean)
+    mn_meas[i, names(mns)] <- mns
+    sds <- apply(analysis_in[[datasetnames[i]]]$comp_values, 2, sd)
+    sd_meas[i, names(sds)] <- sds
+    mrs <- apply(apply(sgn * analysis_in[[datasetnames[i]]]$comp_values, 1, rank), 1, mean)
+    mr_meas[i, names(mrs)] <- mrs
+    N[i] <- analysis_in[[datasetnames[i]]][["comp_frd.tt"]][["F.N"]]
+  }
+  
+  dataset <- sub("_samp", "", sub("_small|_tiny", "", datasetnames))
+  mn_meas <- as.data.frame(mn_meas)
+  mn_meas$dataset <- dataset
+  mn_meas <- mn_meas %>% gather(algorithm, mean, -dataset)
+  se_meas <- sd_meas/sqrt(N)
+  se_meas <- as.data.frame(se_meas)
+  se_meas$dataset <- dataset
+  se_meas <- se_meas %>% gather(algorithm, st.err, -dataset)
+  mn_meas <- full_join(mn_meas, se_meas)
+  # mn_meas$alpha <- ifelse(mn_meas$algorithm == "CHIRPS"
+  #                         , "weight", "light")
+  
+  g1 <- ggplot(data = mn_meas
+              , aes(x = dataset, y = mean
+                    , ymin = I(mean-st.err)
+                    , ymax = I(mean+st.err)
+                    , colour = algorithm
+                    , group = algorithm
+                    , alpha = algorithm)) +
+    geom_line() +
+    geom_point() +
+    geom_errorbar(width = 0.2) +
+    colos + 
+    alpas +
+    theme_bw() +
+    theme(panel.grid.major = element_blank()
+          , panel.grid.minor = element_blank())
+  
+  return(g1)
+  
+}
+
 measures <- c("stability.tr.lapl.", "precision.tt.", "stability.tt.lapl.", "xcoverage.tt.", "rule.length")
 measure <- "stability.tr.lapl."
 CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results)
@@ -261,10 +336,11 @@ for (ds in datasetnames) {
   )
 }
 
-measure <- "stability.tt.lapl."
+measure <- "stability.tt."
 CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results)
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4)
+results_in_plots(tt_analysis, rounding = 4)
 
 measure <- "precision.tt."
 CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
@@ -272,6 +348,7 @@ CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
                                        , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4)
+results_in_plots(tt_analysis, rounding = 4)
 
 measure <- "xcoverage.tt.lapl."
 CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
@@ -279,6 +356,8 @@ CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
                                        , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4)
+results_in_plots(tt_analysis, rounding = 4)
+
 
 measure <- "rule.length"
 CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
@@ -293,6 +372,8 @@ CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
                                        , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4)
+results_in_plots(tt_analysis, rounding = 4)
+
 
 measure <- "f1.tt."
 CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
@@ -300,7 +381,7 @@ CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
                                        , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4)
-
+results_in_plots(tt_analysis, rounding = 4)
 
 measure <- "rule.length"
 CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results

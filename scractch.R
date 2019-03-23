@@ -493,3 +493,17 @@ for (j in 1:(length(algos)-1)) {
 }
 
 analysis_in[[ds]][["comp_wilcox.tt"]] <- wilcos
+
+g2 <- ggplot(data = mn_meas
+             , aes(x = algorithm, y = mean
+                   , ymin = I(mean-st.err)
+                   , ymax = I(mean+st.err)
+                   , colour = dataset
+                   , group = dataset)) +
+  geom_point() +
+  geom_errorbar(width = 0.2) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank()
+        , panel.grid.minor = element_blank())
+
+return(list(g1, g2))
