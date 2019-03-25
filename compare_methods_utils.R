@@ -1,6 +1,5 @@
 library(sbrl)
 library(inTrees)
-library(rattle)
 library(jsonlite)
 
 source("data_files_mgmt.R")
@@ -52,17 +51,36 @@ entropy_corrected <- function(p, q) {
 }
 
 evaluate <- function(prior_labels, post_idx, classes) {
+  
+  all_c <- length(prior_labels)
   prior <- p_count_corrected(prior_labels, classes)
   
-  coverage = mean(post_idx) # tp + fp / tp + fp + tn + fn  
-  xcoverage = sum(post_idx) / (length(post_idx) + 1) # tp + fp / tp + fp + tn + fn + current instance
-  
+  # basic results
   p_counts = p_count_corrected(prior_labels[post_idx], classes)
-  
-  posterior = p_counts[["p_counts"]]
-  stability = p_counts[["s_counts"]]
   counts = p_counts[["counts"]]
-  labels = p_counts[["labels"]]
+  covered <- sum(counts)
+  ci <- covered - counts
+  labels <- p_counts[["labels"]]
+  posterior <- p_counts[["p_counts"]]
+  
+  # coverage
+  coverage <- counts / all_c # tp + fp / tp + fp + tn + fn  
+  xcoverage <- (covered + 1) / (all_c + length(classes) + 1)  # tp + fp / tp + fp + tn + fn + current instance, laplace corrected
+  
+  # stab = tp / tp + fp + current instance. laplace corrected
+  stability <- (counts + 1) / (sum(counts) + length(classes) + 1)
+  
+  # negative results
+  np_counts <- p_count_corrected(prior_labels[!post_idx], classes)
+  ncounts <- np_counts[["counts"]]
+  nc <- all_c - covered
+  nci <- sum(ncounts) - ncounts
+  nposterior <- np_counts[["p_counts"]]
+  # negative predictive value = tn / tn + fn
+  npv <- ncounts / (ncounts + ci)
+  
+  chisq <- chisq.test(rbind(counts, prior[["counts"]]))[["p.value"]]
+  kl_div <- entropy_corrected(posterior, prior[["p_counts"]])
   
   recall = counts / prior[["counts"]] # TPR (recall) TP / (TP + FN)
   
@@ -90,20 +108,27 @@ evaluate <- function(prior_labels, post_idx, classes) {
   # lift = precis / (total_cover * prior)
   lift = pos_corrected / ( cov_corrected * pri_corrected )
   
-  chisq <- chisq.test(rbind(counts, prior[["counts"]]))[["p.value"]]
-  
-  return(list(coverage = coverage
-                    , xcoverage = xcoverage
-                    , stability = stability
-                    , prior = prior[["p_counts"]]
-                    , posterior = p_counts[["p_counts"]]
-                    , counts = counts
-                    , labels = labels
-                    , recall = recall
-                    , f1 = f1
-                    , accu = accu
-                    , lift = lift
-                    , chisq = chisq))
+  return(list(count_all = all_c
+              , covered = covered
+              , not_covered = nc
+              , cc = counts
+              , ci = ci
+              , ncc = ncounts
+              , nci = nci
+              , coverage = coverage
+              , xcoverage = xcoverage
+              , npv = npv
+              , stability = stability
+              , prior = prior[["p_counts"]]
+              , posterior = p_counts[["p_counts"]]
+              , counts = counts
+              , labels = labels
+              , recall = recall
+              , f1 = f1
+              , accu = accu
+              , lift = lift
+              , chisq = chisq
+              , kl_div = kl_div))
 }
 
 get_train_test_sizes <- function(i) {
@@ -144,6 +169,11 @@ results_init <<- function(n_test) {
   proxy_counts <<- integer(n_test)
   proxy_recall <<- numeric(n_test)
   proxy_f1 <<- numeric(n_test)
+  proxy_cc <<- numeric(n_test)
+  proxy_ci <<- numeric(n_test)
+  proxy_ncc <<- numeric(n_test)
+  proxy_nci <<- numeric(n_test)
+  proxy_npv <<- numeric(n_test)
   proxy_accu <<- numeric(n_test)
   proxy_lift <<- numeric(n_test)
   proxy_kl_div <<- numeric(n_test)
@@ -152,6 +182,11 @@ results_init <<- function(n_test) {
   forest_counts <<- integer(n_test)
   forest_recall <<- numeric(n_test)
   forest_f1 <<- numeric(n_test)
+  forest_cc <<- numeric(n_test)
+  forest_ci <<- numeric(n_test)
+  forest_ncc <<- numeric(n_test)
+  forest_nci <<- numeric(n_test)
+  forest_npv <<- numeric(n_test)
   forest_accu <<- numeric(n_test)
   forest_lift <<- numeric(n_test)
   forest_kl_div <<- numeric(n_test)
@@ -319,3 +354,4 @@ sbrl_benchmark <- function(ds_container, classes) {
               , completion_time = Sys.time()
               ))
 }
+

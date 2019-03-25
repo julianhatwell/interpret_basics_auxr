@@ -82,9 +82,14 @@ for (rnr in 1:results_nrows) {
             proxy_stability[j] <- instance_results[["stability"]][benchmark$label[j]]
             proxy_recall[j] <- instance_results[["recall"]][benchmark$label[j]]
             proxy_f1[j] <- instance_results[["f1"]][benchmark$label[j]]
+            proxy_cc[j] <- instance_results[["cc"]][benchmark$label[j]]
+            proxy_ci[j] <- instance_results[["ci"]][benchmark$label[j]]
+            proxy_ncc[j] <- instance_results[["ncc"]][benchmark$label[j]]
+            proxy_nci[j] <- instance_results[["nci"]][benchmark$label[j]]
+            proxy_npv[j] <- instance_results[["npv"]][benchmark$label[j]]
             proxy_accu[j] <- instance_results[["accu"]][benchmark$label[j]]
             proxy_lift[j] <- instance_results[["lift"]][benchmark$label[j]]
-            proxy_kl_div[j] <- entropy_corrected(instance_results[["posterior"]], instance_results[["prior"]])
+            proxy_kl_div[j] <- instance_results[["kl_div"]][benchmark$label[j]]
             forest_precision[j] <- penalise_bad_prediction(forest_label[j]
                                                            , benchmark$label[j]
                                                            , instance_results[["posterior"]][forest_label[j]])
@@ -100,11 +105,13 @@ for (rnr in 1:results_nrows) {
             forest_accu[j] <- penalise_bad_prediction(forest_label[j]
                                                       , benchmark$label[j]
                                                       , instance_results[["accu"]][forest_label[j]])
-            forest_lift[j] <- penalise_bad_prediction(forest_label[j]
+            forest_kl_div[j] <- penalise_bad_prediction(forest_label[j]
                                                       , benchmark$label[j]
-                                                      , instance_results[["lift"]][forest_label[j]])
-            forest_kl_div[j] <- entropy_corrected(instance_results[["posterior"]], instance_results[["prior"]])
-            
+                                                      , instance_results[["kl_div"]][forest_label[j]])
+            forest_npv[j] <- penalise_bad_prediction(forest_label[j]
+                                                        , benchmark$label[j]
+                                                        , instance_results[["npv"]][forest_label[j]])
+            forest_lift[j] <- ifelse(forest_precision[j] == 0, 1, proxy_lift[j])
           }
           
           # save results to file before exiting loop
@@ -123,6 +130,11 @@ for (rnr in 1:results_nrows) {
                                , stability_tr	= proxy_stability
                                , recall_tr = proxy_recall
                                , f1_tr = proxy_f1
+                               , cc_tr = proxy_cc
+                               , ci_tr = proxy_ci
+                               , ncc_tr = proxy_ncc
+                               , nci_tr = proxy_nci
+                               , npv_tr = proxy_npv
                                , accuracy_tr = proxy_accu
                                , lift_tr = proxy_lift
                                , coverage_tr = coverage
@@ -132,6 +144,11 @@ for (rnr in 1:results_nrows) {
                                , stability_tt	= forest_stability
                                , recall_tt = forest_recall
                                , f1_tt = forest_f1
+                               , cc_tt = proxy_cc # doesn't change proxy / forest
+                               , ci_tt = proxy_ci
+                               , ncc_tt = proxy_ncc
+                               , nci_tt = proxy_nci
+                               , npv_tt = forest_npv
                                , accuracy_tt = forest_accu
                                , lift_tt = forest_lift
                                , coverage_tt = coverage
