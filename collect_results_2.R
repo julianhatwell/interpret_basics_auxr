@@ -51,6 +51,14 @@ for (i in seq_along(resfilesdirs)) {
                                              , score_func
                                              , weighting)))
       
+      # seem to be messing something up down the track
+      dataset <- NULL
+      support <- NULL
+      alpha_paths <- NULL
+      disc_path_bins <- NULL
+      score_func <- NULL
+      weighting <- NULL
+      
       if (count == 1) {
         sens_results <- results
       } else {
@@ -129,15 +137,15 @@ for (i in seq_along(resfilesdirs)) {
 }
 names(comp_results) <- sub("_name", "", names(comp_results))
 
-# adjust 0-length rules to be valued as 1, {default}
-sens_results$rule.length <- ifelse(sens_results$rule.length == 0
-                                   , 1
-                                   , sens_results$rule.length)
-
-comp_results$rule.length <- ifelse(comp_results$rule.length == 0
-                                   , 1
-                                   , comp_results$rule.length)
-
 comp_results$pretty.rule[is.na(comp_results$pretty.rule)] <- "{default}"
 comp_results$pretty.rule[comp_results$pretty.rule == ""] <- "{default}"
 comp_results$pretty.rule[comp_results$pretty.rule == "[]"] <- "{default}"
+
+# adjust 0-length rules to be valued as 1, {default}
+sens_results$rule.length <- ifelse(sens_results$pretty.rule == "{default}"
+                                   , 0
+                                   , sens_results$rule.length)
+
+comp_results$rule.length <- ifelse(comp_results$pretty.rule == "{default}"
+                                   , 0
+                                   , comp_results$rule.length)

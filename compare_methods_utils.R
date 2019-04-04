@@ -1,6 +1,7 @@
 library(sbrl)
 library(inTrees)
 library(jsonlite)
+library(rattle)
 
 source("data_files_mgmt.R")
 
@@ -64,7 +65,7 @@ evaluate <- function(prior_labels, post_idx, classes) {
   posterior <- p_counts[["p_counts"]]
   
   # coverage
-  coverage <- counts / all_c # tp + fp / tp + fp + tn + fn  
+  coverage <- covered / all_c # tp + fp / tp + fp + tn + fn  
   xcoverage <- (covered + 1) / (all_c + length(classes) + 1)  # tp + fp / tp + fp + tn + fn + current instance, laplace corrected
   
   # stab = tp / tp + fp + current instance. laplace corrected
@@ -77,7 +78,7 @@ evaluate <- function(prior_labels, post_idx, classes) {
   nci <- sum(ncounts) - ncounts
   nposterior <- np_counts[["p_counts"]]
   # negative predictive value = tn / tn + fn
-  npv <- ncounts / (ncounts + ci)
+  npv <- nci / (nci + ci)
   
   chisq <- chisq.test(rbind(counts, prior[["counts"]]))[["p.value"]]
   kl_div <- entropy_corrected(posterior, prior[["p_counts"]])

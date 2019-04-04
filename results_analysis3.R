@@ -1,6 +1,8 @@
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(gridExtra)
+library(tikzDevice)
 
 # fudge until added absolute coverage, train and test set sizes to results
 train_set_size <- integer(length(datasetnames))
@@ -14,7 +16,7 @@ for (i in seq_along(datasetnames)) {
 names(train_set_size) <- datasetnames
 names(test_set_size) <- datasetnames
 
-laplace_corrections <- function(results_set, datasetname, sensitivity = TRUE) {
+calc_wxcov <- function(results_set, datasetname, sensitivity = TRUE) {
   # filter all results to one dataset
   analysis_out <- results_set %>% 
     filter(dataset == datasetname)
@@ -24,33 +26,42 @@ laplace_corrections <- function(results_set, datasetname, sensitivity = TRUE) {
                             , alpha_paths = factor(alpha_paths)
                             , disc_path_bins = factor(disc_path_bins)
                             , score_func = factor(score_func)
-                            , weighting = weighting)
+                            , weighting = factor(weighting)
+                            )
   }
   
-  analysis_out <- analysis_out %>% mutate(
-           # covered is train set size * coverage
-           covered.tr. = (train_set_size[datasetname] * coverage.tr.)
-           # covered correct is (covered + 1 (explanandum)) * stability
-           # , cc.tr. = (covered.tr. + 1) * stability.tr.
-           , cc.tr. = covered.tr. * precision.tr.
-           # covered incorrect is covered - cc
-           , ci.tr. = covered.tr. - cc.tr.
-           , stability.tr.lapl. = (cc.tr. + 1) / (covered.tr. + n_classes[datasetname] + 1) # laplace and stability
-           , xcoverage.tr.lapl. = (covered.tr. + 1) / (train_set_size[datasetname] + n_classes[datasetname] + 1) # laplace and xcoverage
-           , odds.tr.lapl. = (cc.tr. + 1 + 1/n_classes[datasetname])/(ci.tr. + (n_classes[datasetname] - 1) + (n_classes[datasetname] - 1)/n_classes[datasetname])
-           , lodds.tr.lapl. = log(odds.tr.lapl.)
-           # covered is test set size - 1  * coverage (because of LOO)
-           , covered.tt. = ((test_set_size[datasetname] - 1) * coverage.tt.)
-           # covered correct is (covered + 1 (explanandum)) * stability
-           # , cc.tt. = (covered.tt. + 1) * stability.tt.
-           , cc.tt. = covered.tt. * precision.tt.
-           # covered incorrect is covered - cc
-           , ci.tt. = covered.tt. - cc.tt.
-           , stability.tt.lapl. = (cc.tt. + 1) / (covered.tt. + n_classes[datasetname] + 1) # laplace and stability
-           , xcoverage.tt.lapl. = ((covered.tt. + 1) / (test_set_size[datasetname] + n_classes[datasetname] + 1)) * # laplace and xcoverage
-             ( ci.tt. / (ci.tt. + (test_set_size[datasetname] - covered.tt.)))
-           , odds.tt.lapl. = (cc.tt. + 1 + 1/n_classes[datasetname])/(ci.tt. + (n_classes[datasetname] - 1) + (n_classes[datasetname] - 1)/n_classes[datasetname])
-           , lodds.tt.lapl. = log(odds.tt.lapl.))
+  # analysis_out <- analysis_out %>% mutate(
+  #          # covered is train set size * coverage
+  #          covered.tr. = (train_set_size[datasetname] * coverage.tr.)
+  #          # covered correct is (covered + 1 (explanandum)) * stability
+  #          # , cc.tr. = (covered.tr. + 1) * stability.tr.
+  #          , cc.tr. = covered.tr. * precision.tr.
+  #          # covered incorrect is covered - cc
+  #          , ci.tr. = covered.tr. - cc.tr.
+  #          , stability.tr.lapl. = (cc.tr. + 1) / (covered.tr. + n_classes[datasetname] + 1) # laplace and stability
+  #          , xcoverage.tr.lapl. = (covered.tr. + 1) / (train_set_size[datasetname] + n_classes[datasetname] + 1) # laplace and xcoverage
+  #          , odds.tr.lapl. = (cc.tr. + 1 + 1/n_classes[datasetname])/(ci.tr. + (n_classes[datasetname] - 1) + (n_classes[datasetname] - 1)/n_classes[datasetname])
+  #          , lodds.tr.lapl. = log(odds.tr.lapl.)
+  #          # covered is test set size - 1  * coverage (because of LOO)
+  #          , covered.tt. = ((test_set_size[datasetname] - 1) * coverage.tt.)
+  #          # covered correct is (covered + 1 (explanandum)) * stability
+  #          # , cc.tt. = (covered.tt. + 1) * stability.tt.
+  #          , cc.tt. = covered.tt. * precision.tt.
+  #          # covered incorrect is covered - cc
+  #          , ci.tt. = covered.tt. - cc.tt.
+  #          , stability.tt.lapl. = (cc.tt. + 1) / (covered.tt. + n_classes[datasetname] + 1) # laplace and stability
+  #          , xcoverage.tt.lapl. = ((covered.tt. + 1) / (test_set_size[datasetname] + n_classes[datasetname] + 1)) * # laplace and xcoverage
+  #            ( ci.tt. / (ci.tt. + (test_set_size[datasetname] - covered.tt.)))
+  #          , odds.tt.lapl. = (cc.tt. + 1 + 1/n_classes[datasetname])/(ci.tt. + (n_classes[datasetname] - 1) + (n_classes[datasetname] - 1)/n_classes[datasetname])
+  #          , lodds.tt.lapl. = log(odds.tt.lapl.))
+  analysis_out <- analysis_out %>% mutate(tnr.tr. = nci.tr./(ci.tr. + nci.tr.)
+    , tnr.tt. = nci.tt./(ci.tt. + nci.tt.)
+    , wxcoverage.tr. = tnr.tr. * xcoverage.tr.
+    , wxcoverage.tt. = tnr.tt. * xcoverage.tt.
+    , npv.tr. = nci.tr./(ncc.tr. + nci.tr.)
+    , npv.tt. = nci.tt./(ncc.tt. + nci.tt.)
+    , wxcoverage2.tr. = npv.tr. * xcoverage.tr.
+    , wxcoverage2.tt. = npv.tt. * xcoverage.tt.)
   return(analysis_out)
 }
 
@@ -62,95 +73,94 @@ get_CHIRPS_analysis <- function(measure, results_set
 
   for (ds in datasetnames) {
   
-  # results collection
-  analysis_out[[ds]] <- list()
+    # results collection
+    analysis_out[[ds]] <- list()
+    
+    # filter all results to one dataset
+    analysis <- calc_wxcov(results_set, ds)
+    
+    # get the listing of all the sensitivity analyses by grid
+    analysis_groups <- with(analysis, expand.grid(
+      support = unique(support)
+      , alpha = unique(alpha_paths)
+      , bins = unique(disc_path_bins)
+      , func = unique(score_func)
+      , weights = unique(weighting)))
+    
+    # provide id numbers
+    analysis_groups$id <- as.numeric(rownames(analysis_groups))
+    
+    # extract the values of "measure"
+    analysis_values <- tapply(analysis[, measure]
+                              , list(analysis$support
+                                     , analysis$alpha_paths
+                                     , analysis$disc_path_bins
+                                     , analysis$score_func
+                                     , analysis$weighting)
+                              , identity)
   
-  # filter all results to one dataset
-  analysis <- laplace_corrections(results_set, ds)
-  
-  # get the listing of all the sensitivity analyses by grid
-  analysis_groups <- with(analysis, expand.grid(
-    support = unique(support)
-    , alpha = unique(alpha_paths)
-    , bins = unique(disc_path_bins)
-    , func = unique(score_func)
-    , weights = unique(weighting)))
-  
-  # provide id numbers
-  analysis_groups$id <- as.numeric(rownames(analysis_groups))
-  
-  # extract the values of "measure"
-  analysis_values <- tapply(analysis[, measure]
-                            , list(analysis$support
-                                   , analysis$alpha_paths
-                                   , analysis$disc_path_bins
-                                   , analysis$score_func
-                                   , analysis$weighting)
-                            , identity)
-  
-  analysis_values <- matrix(unlist(analysis_values), ncol = nrow(analysis_groups))
-  analysis_out[[ds]][["analysis_values"]] <- analysis_values
-  
-  # get a first taste of results
-  analysis_groups$mean <- apply(analysis_values, 2, mean)
-  analysis_groups$rank_mean <- colMeans(t(apply(analysis_values, 1, rank)))
-  analysis_groups$rank_sum <- colSums(t(apply(analysis_values, 1, rank)))
-  
-  # plot the facet, hopefully showing lack of bins effect and use of chisq
-  bins_plot <- ggplot(
-    data = analysis_groups
-    , aes(y = mean
-          , x = id
-          , shape = alpha
-          , colour = func
-          , size = support)) +
-    geom_point() +
-    scale_size_discrete(range = c(2, 4)) +
-    theme_bw() +
-    facet_grid(weights~bins)
-  
-  # collect plot
-  analysis_out[[ds]][["bins_weights_facet"]] <- bins_plot
-  
-  # collect groups results
-  analysis_out[[ds]][["analysis_groups"]] <- analysis_groups
-  
-  # which is the best mean measure discover or feed in from best stability
-  if (is.na(top_mean_block)) {
-    ds_top_mean_block <- which.max(analysis_out[[ds]]$analysis_groups$mean)
-  } else {
-    ds_top_mean_block <- top_mean_block
+    analysis_values <- matrix(unlist(analysis_values), ncol = nrow(analysis_groups))
+    analysis_out[[ds]][["analysis_values"]] <- analysis_values
+    
+    # get a first taste of results
+    analysis_groups$mean <- apply(analysis_values, 2, mean)
+    analysis_groups$rank_mean <- colMeans(t(apply(analysis_values, 1, rank)))
+    analysis_groups$rank_sum <- colSums(t(apply(analysis_values, 1, rank)))
+    
+    # plot the facet, hopefully showing lack of bins effect and use of chisq
+    bins_plot <- ggplot(
+      data = analysis_groups
+      , aes(y = mean
+            , x = id
+            , shape = alpha
+            , colour = func
+            , size = support)) +
+      geom_point() +
+      scale_size_discrete(range = c(2, 4)) +
+      theme_bw() +
+      facet_grid(weights~bins)
+    
+    # collect plot
+    analysis_out[[ds]][["bins_weights_facet"]] <- bins_plot
+    
+    # collect groups results
+    analysis_out[[ds]][["analysis_groups"]] <- analysis_groups
+    
+    # which is the best mean measure discover or feed in from best stability
+    if (is.na(top_mean_block)) {
+      ds_top_mean_block <- which.max(analysis_out[[ds]]$analysis_groups$mean)
+    } else {
+      ds_top_mean_block <- top_mean_block
+    }
+    analysis_out[[ds]][["top_mean_block"]] <- ds_top_mean_block
+    
+    if (is.na(top_ranksum_block)) {
+      ds_top_ranksum_block <- which.max(analysis_out[[ds]]$analysis_groups$rank_sum)
+    } else {
+      ds_top_ranksum_block <- top_ranksum_block
+    }
+    analysis_out[[ds]][["top_ranksum_block"]] <- ds_top_ranksum_block
+    
+    top_group_stats <- filter(analysis_groups, id == ds_top_ranksum_block) %>%
+      dplyr::select(support, alpha, bins, func, weights)
+    
+    analysis_out[[ds]][["ds_bestmean_values"]] <- analysis_out[[ds]]$analysis_values[, analysis_out[[ds]][["top_mean_block"]]]
+    analysis_out[[ds]][["ds_bestranksum_values"]] <- analysis_out[[ds]]$analysis_values[, analysis_out[[ds]][["top_ranksum_block"]]]
+    
+    sens_raw <- analysis %>% filter(support == top_group_stats$support
+                                    , alpha_paths == top_group_stats$alpha
+                                    , disc_path_bins == top_group_stats$bins
+                                    , score_func == top_group_stats$func
+                                    , weighting == top_group_stats$weights)
+    
+    analysis_out[[ds]][["sens_raw"]] <- sens_raw
   }
-  analysis_out[[ds]][["top_mean_block"]] <- ds_top_mean_block
-  
-  if (is.na(top_ranksum_block)) {
-    ds_top_ranksum_block <- which.max(analysis_out[[ds]]$analysis_groups$rank_sum)
-  } else {
-    ds_top_ranksum_block <- top_ranksum_block
-  }
-  analysis_out[[ds]][["top_ranksum_block"]] <- ds_top_ranksum_block
-  
-  top_group_stats <- filter(analysis_groups, id == ds_top_ranksum_block) %>%
-    dplyr::select(support, alpha, bins, func, weights)
-  
-  analysis_out[[ds]][["ds_bestmean_values"]] <- analysis_out[[ds]]$analysis_values[, analysis_out[[ds]][["top_mean_block"]]]
-  analysis_out[[ds]][["ds_bestranksum_values"]] <- analysis_out[[ds]]$analysis_values[, analysis_out[[ds]][["top_ranksum_block"]]]
-  
-  sens_raw <- analysis %>% filter(support == top_group_stats$support
-                                  , alpha_paths == top_group_stats$alpha
-                                  , disc_path_bins == top_group_stats$bins
-                                  , score_func == top_group_stats$func
-                                  , weighting == top_group_stats$weights)
-  
-  analysis_out[[ds]][["sens_raw"]] <- sens_raw
-  }
-  
   mean_all_ds <- matrix(NA
                         , ncol = length(datasetnames)
-                        , nrow = ncol(analysis_out$adult_small_samp$analysis_values))
+                        , nrow = ncol(analysis_out[[1]]$analysis_values))
   ranksum_all_ds <- matrix(NA
                            , ncol = length(datasetnames)
-                           , nrow = ncol(analysis_out$adult_small_samp$analysis_values))
+                           , nrow = ncol(analysis_out[[1]]$analysis_values))
   
   for (j in seq_along(datasetnames)) {
     mean_all_ds[, j] <- analysis_out[[datasetnames[j]]]$analysis_groups$mean
@@ -174,7 +184,7 @@ get_comparative_analysis <- function(measure, results_set, CHIRPS_analysis) {
   for (ds in datasetnames) {
     
     # isolate and transform for one dataset
-    analysis <- laplace_corrections(results_set, ds, sensitivity = FALSE)
+    analysis <- calc_wxcov(results_set, ds, sensitivity = FALSE)
 
     # transpose the raw values for analysis
     analysis_values <- tapply(analysis[, measure]
@@ -238,18 +248,30 @@ results_in_detail <- function(analysis_in, rounding = 2, sgn = -1) {
     print("post hoc tests")
     algs <- names(mr)[names(mr) != "CHIRPS"]
     k <- analysis_in[[ds]]$comp_frd.tt$parameter + 1
-    md <- mr[algs] - mr["CHIRPS"]
+    print("top and 2nd rank")
+    top_rank <- which.min(mr)
+    scnd_rank <- which.min(mr[-top_rank])
+    print(c(top_rank, scnd_rank))
     print("rank diff")
+    md <- mr[names(scnd_rank)] - mr[names(top_rank)]
     print(round(md, rounding))
+    print("z stat")
     z <- (md) / sqrt((k * (k + 1)) / (6 * N))
     ztest <- pnorm(z, lower.tail = FALSE)
-    print("z stat")
     print(z)
     print("post-hoc z-test")
     print(ztest)
     print("reject null bonferroni")
     print(ztest < 0.025/df1)
     print(0.025/df1)
+    print("presence of ones")
+    print(apply(analysis_in[[ds]]$comp_values
+          , 2
+          , function(x) {sum(ifelse(x == 1, TRUE, FALSE))}))
+    print("presence of zeroes")
+    print(apply(analysis_in[[ds]]$comp_values
+          , 2
+          , function(x) {sum(ifelse(x == 0, TRUE, FALSE))}))
   }
 }
 
@@ -269,8 +291,7 @@ colos <- scale_colour_manual(
   values = myPal)
 alpas <- scale_alpha_manual(values = myAlph)
 
-
-results_in_plots <- function(analysis_in, rounding = 2, sgn = -1) {
+results_in_plots <- function(measure, analysis_in, rounding = 2, sgn = -1, y_lims = NA) {
   nds <- length(datasetnames)
   dmnms <- list(datasetnames, algs)
   crt_mat <- function() {
@@ -306,6 +327,11 @@ results_in_plots <- function(analysis_in, rounding = 2, sgn = -1) {
   # mn_meas$alpha <- ifelse(mn_meas$algorithm == "CHIRPS"
   #                         , "weight", "light")
   
+  if (is.na(y_lims)) {
+    sc_y <- scale_y_continuous()
+  } else {
+    sc_y <- scale_y_continuous(limits = y_lims)
+  }
   g1 <- ggplot(data = mn_meas
               , aes(x = dataset, y = mean
                     , ymin = I(mean-st.err)
@@ -318,16 +344,18 @@ results_in_plots <- function(analysis_in, rounding = 2, sgn = -1) {
     geom_errorbar(width = 0.2) +
     colos + 
     alpas +
+    labs(y = paste("mean", sub("wx", "exc. ", sub(".tt.|.tr.", "", measure)))) +
+    sc_y +
     theme_bw() +
     theme(panel.grid.major = element_blank()
-          , panel.grid.minor = element_blank())
+          , panel.grid.minor = element_blank()
+          , axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)))
   
   return(g1)
   
 }
 
-measures <- c("stability.tr.lapl.", "precision.tt.", "stability.tt.lapl.", "xcoverage.tt.", "rule.length")
-measure <- "stability.tr.lapl."
+measure <- "stability.tr."
 CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results)
 
 for (ds in datasetnames) {
@@ -340,7 +368,7 @@ measure <- "stability.tt."
 CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results)
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4)
-results_in_plots(tt_analysis, rounding = 4)
+stab_plot <- results_in_plots(measure, tt_analysis, rounding = 4, y_lims = c(0,1))
 
 measure <- "precision.tt."
 CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
@@ -348,16 +376,40 @@ CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
                                        , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4)
-results_in_plots(tt_analysis, rounding = 4)
+prec_plot <- results_in_plots(measure, tt_analysis, rounding = 4, y_lims = c(0,1))
 
-measure <- "xcoverage.tt.lapl."
+tikz(file = "prec_stab.tikz", width = 6.85, height = 5)
+grid.arrange(prec_plot, stab_plot, nrow = 2)
+dev.off()
+
+measure <- "coverage.tt."
 CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
                                        , top_mean_block = CHIRPS_analysis[[ds]][["top_mean_block"]]
                                        , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4)
-results_in_plots(tt_analysis, rounding = 4)
+cov_plot <- results_in_plots(measure, tt_analysis, rounding = 4, y_lims = c(0,1))
 
+measure <- "wxcoverage.tt."
+CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
+                                       , top_mean_block = CHIRPS_analysis[[ds]][["top_mean_block"]]
+                                       , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
+tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
+results_in_detail(tt_analysis, rounding = 4)
+wxcov_plot <- results_in_plots(measure, tt_analysis, rounding = 4, y_lims = c(0,1))
+
+measure <- "wxcoverage2.tt." # wrong
+CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
+                                       , top_mean_block = CHIRPS_analysis[[ds]][["top_mean_block"]]
+                                       , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
+tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
+results_in_detail(tt_analysis, rounding = 4)
+wxcov2_plot <- results_in_plots(measure, tt_analysis, rounding = 4, y_lims = c(0,1))
+
+
+tikz(file = "cov_wxcov.tikz", width = 6.85, height = 5)
+grid.arrange(cov_plot, wxcov_plot, nrow = 2)
+dev.off()
 
 measure <- "rule.length"
 CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
@@ -365,30 +417,38 @@ CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
                                        , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4, sgn = 1) # positive ranking. shortest wins
+results_in_plots(measure, tt_analysis, rounding = 4)
 
-measure <- "recall.tt."
-CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
-                                       , top_mean_block = CHIRPS_analysis[[ds]][["top_mean_block"]]
-                                       , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
-tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
-results_in_detail(tt_analysis, rounding = 4)
-results_in_plots(tt_analysis, rounding = 4)
+mean_rulelens <- matrix(NA, ncol= 5, nrow = 9)
+dimnames(mean_rulelens) <- list(datasetnames
+                                , c(algorithms, "CHIRPS"))
+for (ds in datasetnames) {
+  mn_rl <- apply(tt_analysis[[ds]]$comp_values, 2, mean)
+  mean_rulelens[ds, ] <- mn_rl[c(algorithms, "CHIRPS")]
+}
 
+measure <- "mean_rule_cascade"
+analysis <- comp_summ_results
+# transpose the raw values for analysis
+analysis_values <- tapply(analysis[, measure]
+                          , list(analysis$dataset_name
+                                 , analysis$algorithm)
+                          , identity)
 
-measure <- "f1.tt."
-CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
-                                       , top_mean_block = CHIRPS_analysis[[ds]][["top_mean_block"]]
-                                       , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
-tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
-results_in_detail(tt_analysis, rounding = 4)
-results_in_plots(tt_analysis, rounding = 4)
+mean_rulelens
+analysis_values <- cbind(analysis_values, CHIRPS = 1)
+analysis_values
+mean_rulelens * analysis_values
 
-measure <- "rule.length"
-CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
-                                       , top_mean_block = CHIRPS_analysis[[ds]][["top_mean_block"]]
-                                       , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
-tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
-results_in_detail(tt_analysis, rounding = 4, sgn = 1) # positive ranking. shortest wins
+measure <- "fidelity"
+analysis <- comp_summ_results
+# transpose the raw values for analysis
+analysis_values <- tapply(analysis[, measure]
+                          , list(analysis$dataset_name
+                                 , analysis$algorithm)
+                          , identity)
+analysis_values
+
 
 for (ds in datasetnames) {
   A_rules <- with(tt_analysis[[ds]]$comp_raw
@@ -421,21 +481,16 @@ for (ds in datasetnames) {
   print(uniques)
 }
 
-measure <- "mean_rule_cascade"
-analysis <- comp_summ_results
-# transpose the raw values for analysis
-analysis_values <- tapply(analysis[, measure]
-                          , list(analysis$dataset_name
-                                 , analysis$algorithm)
-                          , identity)
-
-print(analysis_values)
-
-analysis <- comp_summ_results
-# transpose the raw values for analysis
-analysis_values <- tapply(analysis[, measure]
-                          , list(analysis$dataset_name
-                                 , analysis$algorithm)
-                          , identity)
-
-print(analysis_values)
+res <- (gather(as.data.frame(tt_analysis$adult_small_samp$comp_values)
+               , "algorithm", measure))
+densityplot(~measure
+            , data = res
+            , groups = algorithm
+            , col=myPal[c(1,2,5,3,4)]
+            , alpha = c(0.4, 0.4, 1, 0.4, 0.4)
+            , auto.key = list(columns=5
+                              , col=myPal[c(1,2,5,3,4)]
+                              , alpha = c(0.4, 0.4, 1, 0.4, 0.4)
+                              , lines=FALSE)
+            , plot.points=FALSE
+            , par.settings = MyLatticeTheme)
