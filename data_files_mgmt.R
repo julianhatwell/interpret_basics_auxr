@@ -45,6 +45,14 @@ get_datasetnames <- function(x) {
   sub(".csv.gz", "", x)
 }
 
+get_datasetname_stems <- function(x) {
+  sub("_samp", "", sub("_small|_tiny", "", x))
+}
+
+get_measure_stem <- function(x) {
+  paste("mean", sub("wx", "exc. ", sub(".tt.|.tr.", "", measure)))
+}
+
 datasetnames <- sapply(data_files, get_datasetnames)
 resfilesdirs <- paste0(project_dir, datasetnames, "\\")
 resfilesdirs <- paste0(project_dir, datasetnames, "/")

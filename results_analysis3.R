@@ -1,9 +1,30 @@
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(grid)
 library(gridExtra)
 library(tikzDevice)
+library(cowplot) # get legend out of a ggplot
 
+# plot themes
+source("C:\\Users\\id126493\\OneDrive\\Documents\\PhD\\KTheme.R")
+reds <- k.grad.red.rev(2)
+ongs <- k.grad.orange.rev(2)
+blus <- k.grad.blue.rev(2)
+grns <- k.grad.green.rev(2)
+prps <- k.grad.purple.rev(2)
+nuts <- myPalNeut
+algs <- c(algorithms, "CHIRPS")
+myPal <- c(reds[2], ongs[2], blus[2], grns[2], k.pink)
+myAlph <- c(rep(0.4, length(algs) - 1), 1)
+names(myPal) <- algs
+names(myAlph) <- algs
+colos <- scale_colour_manual(
+  values = myPal)
+alpas <- scale_alpha_manual(values = myAlph)
+sens_colos_silent <- scale_colour_manual(values = c(k.purple, k.pink, k.brightblue)
+                                          , guide = FALSE)
+sens_colos <- scale_colour_manual(values = c(k.purple, k.pink, k.brightblue))
 # fudge until added absolute coverage, train and test set sizes to results
 train_set_size <- integer(length(datasetnames))
 test_set_size <- integer(length(datasetnames))
@@ -104,40 +125,50 @@ get_CHIRPS_analysis <- function(measure, results_set
     
     # get a first taste of results
     analysis_groups$mean <- apply(analysis_values, 2, mean)
+    analysis_groups$sd <- apply(analysis_values, 2, sd)
+    analysis_groups$st.err <- analysis_groups$sd / sqrt(test_set_size[ds])
     analysis_groups$rank_mean <- colMeans(t(apply(analysis_values, 1, rank)))
     analysis_groups$rank_sum <- colSums(t(apply(analysis_values, 1, rank)))
-    
-    # plot the facet, hopefully showing lack of bins effect and use of chisq
-    bins_plot <- ggplot(
-      data = analysis_groups
-      , aes(y = mean
-            , x = id
-            , shape = alpha
-            , colour = func
-            , size = support)) +
-      geom_point() +
-      scale_size_discrete(range = c(2, 4)) +
-      theme_bw() +
-      facet_grid(weights~bins)
-    
-    # collect plot
-    analysis_out[[ds]][["bins_weights_facet"]] <- bins_plot
     
     # collect groups results
     analysis_out[[ds]][["analysis_groups"]] <- analysis_groups
     
     # which is the best mean measure discover or feed in from best stability
     if (is.na(top_mean_block)) {
-      ds_top_mean_block <- which.max(analysis_out[[ds]]$analysis_groups$mean)
+      ds_top_mean_block <- which.max(analysis_groups$mean)
     } else {
-      ds_top_mean_block <- top_mean_block
+      # extract the values of "top_mean_block"
+      tr_values <- tapply(analysis[, top_mean_block]
+                                , list(analysis$support
+                                       , analysis$alpha_paths
+                                       , analysis$disc_path_bins
+                                       , analysis$score_func
+                                       , analysis$weighting)
+                                , identity)
+      tr_values <- matrix(unlist(tr_values), ncol = nrow(analysis_groups))
+      
+      # get a first taste of results
+      tr_rank_mean <- colMeans(t(apply(tr_values, 1, rank)))
+      ds_top_mean_block <- which.max(tr_rank_mean)
     }
     analysis_out[[ds]][["top_mean_block"]] <- ds_top_mean_block
     
     if (is.na(top_ranksum_block)) {
-      ds_top_ranksum_block <- which.max(analysis_out[[ds]]$analysis_groups$rank_sum)
+      ds_top_ranksum_block <- which.max(analysis_groups$rank_sum)
     } else {
-      ds_top_ranksum_block <- top_ranksum_block
+      # extract the values of "top_mean_block"
+      tr_values <- tapply(analysis[, top_ranksum_block]
+                          , list(analysis$support
+                                 , analysis$alpha_paths
+                                 , analysis$disc_path_bins
+                                 , analysis$score_func
+                                 , analysis$weighting)
+                          , identity)
+      tr_values <- matrix(unlist(tr_values), ncol = nrow(analysis_groups))
+      
+      # get a first taste of results
+      tr_rank_sum <- colSums(t(apply(tr_values, 1, rank)))
+      ds_top_ranksum_block <- which.max(tr_rank_sum)
     }
     analysis_out[[ds]][["top_ranksum_block"]] <- ds_top_ranksum_block
     
@@ -174,7 +205,6 @@ get_CHIRPS_analysis <- function(measure, results_set
     analysis_out[[ds]][["overall_bestmean_values"]] <- analysis_out[[ds]]$analysis_values[, analysis_out$overall_bestmean_block]
     analysis_out[[ds]][["overall_bestranksum_values"]] <- analysis_out[[ds]]$analysis_values[, analysis_out$overall_bestranksum_block]
   }
-  
   return(analysis_out)
 }
 
@@ -275,22 +305,6 @@ results_in_detail <- function(analysis_in, rounding = 2, sgn = -1) {
   }
 }
 
-source("C:\\Users\\id126493\\OneDrive\\Documents\\PhD\\KTheme.R")
-reds <- k.grad.red.rev(2)
-ongs <- k.grad.orange.rev(2)
-blus <- k.grad.blue.rev(2)
-grns <- k.grad.green.rev(2)
-prps <- k.grad.purple.rev(2)
-nuts <- myPalNeut
-algs <- c(algorithms, "CHIRPS")
-myPal <- c(reds[2], ongs[2], blus[2], grns[2], k.pink)
-myAlph <- c(rep(0.4, length(algs) - 1), 1)
-names(myPal) <- algs
-names(myAlph) <- algs
-colos <- scale_colour_manual(
-  values = myPal)
-alpas <- scale_alpha_manual(values = myAlph)
-
 results_in_plots <- function(measure, analysis_in, rounding = 2, sgn = -1, y_lims = NA) {
   nds <- length(datasetnames)
   dmnms <- list(datasetnames, algs)
@@ -315,7 +329,7 @@ results_in_plots <- function(measure, analysis_in, rounding = 2, sgn = -1, y_lim
     N[i] <- analysis_in[[datasetnames[i]]][["comp_frd.tt"]][["F.N"]]
   }
   
-  dataset <- sub("_samp", "", sub("_small|_tiny", "", datasetnames))
+  dataset <- get_datasetname_stems(datasetnames)
   mn_meas <- as.data.frame(mn_meas)
   mn_meas$dataset <- dataset
   mn_meas <- mn_meas %>% gather(algorithm, mean, -dataset)
@@ -344,15 +358,11 @@ results_in_plots <- function(measure, analysis_in, rounding = 2, sgn = -1, y_lim
     geom_errorbar(width = 0.2) +
     colos + 
     alpas +
-    labs(y = paste("mean", sub("wx", "exc. ", sub(".tt.|.tr.", "", measure)))) +
+    labs(y = get_measure_stem(measure)) +
     sc_y +
-    theme_bw() +
-    theme(panel.grid.major = element_blank()
-          , panel.grid.minor = element_blank()
-          , axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0)))
+    myGgTheme
   
   return(g1)
-  
 }
 
 measure <- "stability.tr."
@@ -364,16 +374,69 @@ for (ds in datasetnames) {
   )
 }
 
+sens_plot <- function(analysis_in) {
+  
+  # quirk of the way they are organised
+  idx <- c(1:6, 13:18, 25:30, 7:12, 19:24, 31:36)
+  idx <- c(idx, idx + 36)
+  
+  analysis_plotting <- analysis_in$analysis_groups
+  analysis_plotting <- analysis_plotting[idx, ] # re-order
+  analysis_plotting$id_plotting <- c(1:18, 20:37, 39:56, 58:75)
+  
+  tr_top_mean <- analysis_plotting[analysis_plotting$id == analysis_in$top_mean_block, "id_plotting"]
+  arrowbase <- range(analysis_plotting$mean)[1]
+  arrowtip <- arrowbase + (range(analysis_plotting$mean)[2]-range(analysis_plotting$mean)[1]) / 8
+  
+  g <- ggplot(
+    data = analysis_plotting
+    , aes(y = mean
+          , ymin = I(mean-st.err)
+          , ymax = I(mean+st.err)
+          , x = id_plotting
+          , shape = alpha
+          , colour = func
+          , size = support)) +
+    geom_point() +
+    geom_errorbar(size=0.5, width=1) +
+    geom_vline(xintercept = c(19, 57)
+               , linetype = 2
+               , colour = myPalNeut[8]) +
+    geom_vline(xintercept = 38
+               , linetype = 1
+               , colour = myPalNeut[7]) +
+    geom_segment(x = tr_top_mean
+                 , xend = tr_top_mean
+                 , y = arrowbase
+                 , yend = arrowtip
+                 , arrow = arrow(length = unit(0.025, "npc"))
+                 , colour = myPalNeut[7]
+                 , size = 0.5) +
+    labs(title = get_datasetname_stems(ds)
+         , x = NULL, y = NULL) +
+    scale_size_discrete(range = c(0.5, 1), guide = FALSE) +
+    scale_shape(guide = FALSE) +
+    sens_colos_silent +
+    myGgTheme +
+    theme(axis.text.x = element_blank()
+          , panel.grid.major = element_blank()
+          , panel.grid.minor = element_blank())
+  return(g)
+}
+
+# before each measure, get the top rank mean from stability.tr.
 measure <- "stability.tt."
-CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results)
+CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
+                                       , top_mean_block = "stability.tr."
+                                       , top_ranksum_block = "stability.tr.")
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4)
 stab_plot <- results_in_plots(measure, tt_analysis, rounding = 4, y_lims = c(0,1))
 
 measure <- "precision.tt."
 CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
-                                       , top_mean_block = CHIRPS_analysis[[ds]][["top_mean_block"]]
-                                       , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
+                                       , top_mean_block = "stability.tr."
+                                       , top_ranksum_block = "stability.tr.")
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4)
 prec_plot <- results_in_plots(measure, tt_analysis, rounding = 4, y_lims = c(0,1))
@@ -384,27 +447,19 @@ dev.off()
 
 measure <- "coverage.tt."
 CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
-                                       , top_mean_block = CHIRPS_analysis[[ds]][["top_mean_block"]]
-                                       , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
+                                       , top_mean_block = "stability.tr."
+                                       , top_ranksum_block = "stability.tr.")
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4)
 cov_plot <- results_in_plots(measure, tt_analysis, rounding = 4, y_lims = c(0,1))
 
 measure <- "wxcoverage.tt."
 CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
-                                       , top_mean_block = CHIRPS_analysis[[ds]][["top_mean_block"]]
-                                       , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
+                                       , top_mean_block = "stability.tr."
+                                       , top_ranksum_block = "stability.tr.")
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4)
 wxcov_plot <- results_in_plots(measure, tt_analysis, rounding = 4, y_lims = c(0,1))
-
-measure <- "wxcoverage2.tt." # wrong
-CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
-                                       , top_mean_block = CHIRPS_analysis[[ds]][["top_mean_block"]]
-                                       , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
-tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
-results_in_detail(tt_analysis, rounding = 4)
-wxcov2_plot <- results_in_plots(measure, tt_analysis, rounding = 4, y_lims = c(0,1))
 
 
 tikz(file = "cov_wxcov.tikz", width = 6.85, height = 5)
@@ -413,8 +468,8 @@ dev.off()
 
 measure <- "rule.length"
 CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results
-                                       , top_mean_block = CHIRPS_analysis[[ds]][["top_mean_block"]]
-                                       , top_ranksum_block = CHIRPS_analysis[[ds]][["top_ranksum_block"]])
+                                       , top_mean_block = "stability.tr."
+                                       , top_ranksum_block = "stability.tr.")
 tt_analysis <- get_comparative_analysis(measure, comp_results, CHIRPS_analysis)
 results_in_detail(tt_analysis, rounding = 4, sgn = 1) # positive ranking. shortest wins
 results_in_plots(measure, tt_analysis, rounding = 4)
@@ -494,3 +549,50 @@ densityplot(~measure
                               , lines=FALSE)
             , plot.points=FALSE
             , par.settings = MyLatticeTheme)
+
+res <- calc_wxcov(sens_results, "adult_small_samp", sensitivity = TRUE)
+
+# sensitivity plots
+for(ds in datasetnames) {
+  tikz(file = paste0(ds, "_sens.tikz"), width = 2.2, height = 1.5)
+  print(sens_plot(CHIRPS_analysis[[ds]]))
+  dev.off()
+}  
+
+# plot to get only the legend
+legend_plot <- ggplot(
+  data = analysis_in
+  , aes(y = mean
+        , ymin = I(mean-st.err)
+        , ymax = I(mean+st.err)
+        , x = id_plotting
+        , shape = alpha
+        , colour = func
+        , size = support)) +
+  geom_point() +
+  geom_errorbar(size=0.5, width=1) +
+  geom_vline(xintercept = c(19, 57)
+             , linetype = 2
+             , colour = myPalNeut[8]) +
+  geom_vline(xintercept = 38
+             , linetype = 1
+             , colour = myPalNeut[7]) +
+  labs(title = get_datasetname_stems(ds)
+       , x = NULL, y = NULL) +
+  scale_size_discrete(range = c(0.5, 1)) +
+  sens_colos +
+  myGgTheme +
+  theme(axis.text.x = element_blank()
+        , panel.grid.major = element_blank()
+        , panel.grid.minor = element_blank()
+        , legend.box = "horizontal")
+
+lgnd <- cowplot::get_legend(legend_plot)
+grid.newpage()
+tikz(file = "legend_sens.tikz", width = 2.2, height = 1.5)
+grid.draw(lgnd)
+dev.off()
+
+analysis_in <- CHIRPS_analysis[[ds]]
+
+
