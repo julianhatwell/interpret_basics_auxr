@@ -365,15 +365,6 @@ results_in_plots <- function(measure, analysis_in, rounding = 2, sgn = -1, y_lim
   return(g1)
 }
 
-measure <- "stability.tr."
-CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results)
-
-for (ds in datasetnames) {
-  print(c(CHIRPS_analysis[[ds]][["top_mean_block"]]
-          , CHIRPS_analysis[[ds]][["top_ranksum_block"]])
-  )
-}
-
 sens_plot <- function(analysis_in) {
   
   # quirk of the way they are organised
@@ -422,6 +413,15 @@ sens_plot <- function(analysis_in) {
           , panel.grid.major = element_blank()
           , panel.grid.minor = element_blank())
   return(g)
+}
+
+measure <- "stability.tr."
+CHIRPS_analysis <- get_CHIRPS_analysis(measure, sens_results)
+
+for (ds in datasetnames) {
+  print(c(CHIRPS_analysis[[ds]][["top_mean_block"]]
+          , CHIRPS_analysis[[ds]][["top_ranksum_block"]])
+  )
 }
 
 # before each measure, get the top rank mean from stability.tr.
