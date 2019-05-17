@@ -253,12 +253,26 @@ get_comparative_analysis <- function(measure, results_set, CHIRPS_analysis) {
 }
 
 results_in_detail <- function(analysis_in, rounding = 2, sgn = -1) {
+  mrs <- matrix(NA, nrow = length(datasetnames), ncol = 1 + length(algorithms))
+  dimnames(mrs) <- list(datasetnames, c(algorithms, "CHIRPS"))
+  mns <- matrix(NA, nrow = length(datasetnames), ncol = 1 + length(algorithms))
+  dimnames(mns) <- list(datasetnames, c(algorithms, "CHIRPS"))
+  sds <- matrix(NA, nrow = length(datasetnames), ncol = 1 + length(algorithms))
+  dimnames(sds) <- list(datasetnames, c(algorithms, "CHIRPS"))
   for (ds in datasetnames) {
     print(ds)
     print("mean qm")
-    print(round(apply(analysis_in[[ds]]$comp_values, 2, mean), rounding))
+    mn <- apply(analysis_in[[ds]]$comp_values, 2, mean)
+    for (mrname in names(mn)) {
+      mns[ds, mrname] <- mn[mrname]
+    }
+    print(round(mn, rounding))
     print("sd qm")
-    print(round(apply(analysis_in[[ds]]$comp_values, 2, sd), rounding))
+    s.dev <- apply(analysis_in[[ds]]$comp_values, 2, sd)
+    for (mrname in names(s.dev)) {
+      sds[ds, mrname] <- s.dev[mrname]
+    }
+    print(round(s.dev, rounding))
     print("min qm")
     print(round(apply(analysis_in[[ds]]$comp_values, 2, min), rounding))
     print("max qm")
@@ -266,6 +280,9 @@ results_in_detail <- function(analysis_in, rounding = 2, sgn = -1) {
     print("med qm")
     print(round(apply(analysis_in[[ds]]$comp_values, 2, median), rounding))
     mr <- apply(apply(sgn * analysis_in[[ds]]$comp_values, 1, rank), 1, mean)
+    for (mrname in names(mr)) {
+      mrs[ds, mrname] <- mr[mrname]
+    }
     print("mean ranks")
     print(round(mr, rounding))
     print("Fried test")
@@ -303,6 +320,16 @@ results_in_detail <- function(analysis_in, rounding = 2, sgn = -1) {
           , 2
           , function(x) {sum(ifelse(x == 0, TRUE, FALSE))}))
   }
+  # print(mrs)
+  ses <- function(x) {
+    sd(x, na.rm = TRUE)/sqrt(length(x[!is.na(x)]))
+  }
+  ord <- sort(c(algorithms, "CHIRPS"))
+  print(apply(mrs, 2, mean, na.rm = TRUE)[ord])
+  print(apply(mrs, 2, ses)[ord])
+  # print(mns)
+  print(apply(mns, 2, mean, na.rm = TRUE)[ord])
+  print(apply(mns, 2, ses)[ord])
 }
 
 results_in_plots <- function(measure, analysis_in, rounding = 2, sgn = -1, y_lims = NA) {
