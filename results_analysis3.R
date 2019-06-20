@@ -7,7 +7,8 @@ library(tikzDevice)
 library(cowplot) # get legend out of a ggplot
 
 # plot themes
-source("C:\\Users\\id126493\\OneDrive\\Documents\\PhD\\KTheme.R")
+# source("C:\\Users\\id126493\\OneDrive\\Documents\\PhD\\KTheme.R")
+source("C:\\Users\\Crutt\\OneDrive\\Documents\\PhD\\KTheme.R")
 reds <- k.grad.red.rev(2)
 ongs <- k.grad.orange.rev(2)
 blus <- k.grad.blue.rev(2)

@@ -149,3 +149,4 @@ sens_results$rule.length <- ifelse(sens_results$pretty.rule == "{default}"
 comp_results$rule.length <- ifelse(comp_results$pretty.rule == "{default}"
                                    , 0
                                    , comp_results$rule.length)
+

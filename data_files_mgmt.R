@@ -1,9 +1,11 @@
 # data settings
-data_dir <- "C:\\Users\\id126493\\Documents\\GitHub\\explain_te\\CHIRPS\\datafiles\\"
+# data_dir <- "C:\\Users\\id126493\\Documents\\GitHub\\explain_te\\CHIRPS\\datafiles\\"
+data_dir <- "C:\\Users\\Crutt\\Documents\\GitHub\\explain_te\\CHIRPS\\datafiles\\"
 # data_dir <- "~/github/explain_te/CHIRPS/datafiles/"
 # datafilesdir <- "c:\\Dev\\Study\\Python\\explain_te\\forest_surveyor\\datafiles\\"
 
-project_dir <- "V:\\whiteboxing\\"
+# project_dir <- "V:\\whiteboxing\\"
+project_dir <- "C:\\Users\\Crutt\\Documents\\whiteboxing\\tests\\"
 #project_dir <- "/home/julian/whiteboxing/"
 
 n_classes <- c(adult_small_samp = 2
