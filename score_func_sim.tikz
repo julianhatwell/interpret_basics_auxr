@@ -1,4 +1,4 @@
-% Created by tikzDevice version 0.12 on 2019-02-28 17:13:42
+% Created by tikzDevice version 0.12 on 2019-03-01 12:00:25
 % !TEX encoding = UTF-8 Unicode
 \begin{tikzpicture}[x=1pt,y=1pt]
 \definecolor{fillColor}{RGB}{255,255,255}
@@ -81,15 +81,7 @@
 
 \node[text=drawColor,anchor=base west,inner sep=0pt, outer sep=0pt, scale=  1.00] at (262.45, 15.60) {a};
 
-\node[text=drawColor,rotate= 90.00,anchor=base west,inner sep=0pt, outer sep=0pt, scale=  1.00] at ( -3.14, 76.82) {Score:};
-
-\node[text=drawColor,rotate= 90.00,anchor=base west,inner sep=0pt, outer sep=0pt, scale=  1.00] at (  8.86, 76.82) {If };
-
-\node[text=drawColor,rotate= 90.00,anchor=base west,inner sep=0pt, outer sep=0pt, scale=  1.00] at (  8.86,102.95) {a};
-
-\node[text=drawColor,rotate= 90.00,anchor=base west,inner sep=0pt, outer sep=0pt, scale=  1.00] at (  8.86,107.95) { = 0 then Score = Support };
-
-\node[text=drawColor,rotate= 90.00,anchor=base west,inner sep=0pt, outer sep=0pt, scale=  1.00] at (  8.86,223.26) {  };
+\node[text=drawColor,rotate= 90.00,anchor=base,inner sep=0pt, outer sep=0pt, scale=  1.00] at ( 10.80,150.54) {Score};
 \end{scope}
 \begin{scope}
 \path[clip] ( 49.20, 61.20) rectangle (480.69,239.88);
@@ -458,5 +450,11 @@
 \node[text=drawColor,anchor=base,inner sep=0pt, outer sep=0pt, scale=  1.00] at (424.76, 39.60) {0.9};
 
 \node[text=drawColor,anchor=base,inner sep=0pt, outer sep=0pt, scale=  1.00] at (464.71, 39.60) {1};
+\end{scope}
+\begin{scope}
+\path[clip] ( 49.20, 61.20) rectangle (480.69,239.88);
+\definecolor{drawColor}{RGB}{255,0,0}
+
+\node[text=drawColor,anchor=base,inner sep=0pt, outer sep=0pt, scale=  1.00] at (344.85,223.67) {N = rule length};
 \end{scope}
 \end{tikzpicture}
