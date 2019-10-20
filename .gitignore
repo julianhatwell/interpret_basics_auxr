@@ -13,6 +13,9 @@
 *.pickle
 *.bib
 *.tex
+*.tikz
+*.label
+*.out
 /.ipynb_checkpoints
 /__pycache__
 /adult_pickles
@@ -27,3 +30,4 @@
 /nursery_pickles
 /EDA_cache
 .Rproj.user
+*.gitignore

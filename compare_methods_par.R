@@ -1,4 +1,5 @@
 library(psych)
+library(ada)
 library(randomForest)
 library(foreach)
 library(doParallel)
@@ -6,6 +7,8 @@ n_cores <- detectCores() - 2
 random_states <- 123 # :152
 source("compare_methods_utils.R")
 
+model <- "rf"
+model <- "ada"
 algorithm <- "inTrees"
 # algorithm <- "BRL"
 
@@ -35,18 +38,32 @@ for (rnr in 1:results_nrows) {
           
           ntree <- fromJSON(readLines(file(paste0(
             resfilesdirs[i]
-            , "best_params_rnst_"
+            , model
+            , "_best_params_rnst_"
             , random_states[r]
             , ".json"))))$n_estimators
           
-          # build randfor
+          if (model == "ada") {
+            base_estimator <- fromJSON(readLines(file(paste0(
+              resfilesdirs[i]
+              , model
+              , "_best_params_rnst_"
+              , random_states[r]
+              , ".json"))))$base_estimator
+            max_depth_pos <- regexpr("max_depth=", base_estimator) + nchar("max_depth=")
+            max_depth <- as.integer(substr(base_estimator, max_depth_pos, max_depth_pos))
+            }
+          
+          # build forest
           set.seed(random_states[r])
-          randfor <- randomForest(fmla, data=dat_train, ntree=ntree)
-          forest_label <- which_class(as.character(predict(randfor
+          if (model == "rf") forest <- randomForest(fmla, data=dat_train, ntree=ntree)
+          if (model == "ada") forest <- ada(fmla, data=dat_train, iter=ntree
+                                            , rpart.control(maxdepth=max_depth))
+          forest_label <- which_class(as.character(predict(forest
                                                            , newdata = ds_container$X_test)))
           # run method and benchmark
           if (algorithm == "inTrees") {
-            benchmark <- inTrees_benchmark(forest = randfor
+            benchmark <- inTrees_benchmark(forest = forest
                                            , ds_container = ds_container
                                            , ntree = ntree
                                            , maxdepth = 1000
@@ -72,7 +89,7 @@ for (rnr in 1:results_nrows) {
                                          , classes = classes)
 
             forest_vote_share[j] <-
-              mean(predict(randfor, newdata=ds_container$X_test[1, ]
+              mean(predict(forest, newdata=ds_container$X_test[1, ]
                            , predict.all = TRUE)$individual ==
                      classes[forest_label[j]])
             prior[j] <- instance_results[["prior"]][forest_label[j]]
