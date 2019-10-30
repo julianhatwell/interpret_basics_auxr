@@ -3,26 +3,29 @@ library(ada)
 library(randomForest)
 library(foreach)
 library(doParallel)
-n_cores <- detectCores() - 2
+n_cores <- 1 # detectCores() - 2
 random_states <- 123 # :152
 source("compare_methods_utils.R")
 
+max_tests <- 1000
+
 model <- "rf"
-model <- "ada"
+# model <- "ada"
 algorithm <- "inTrees"
 # algorithm <- "BRL"
 
 results_nrows <- length(random_states) * length(datasetnames)
 
-# cl <- makeCluster(n_cores)
-# registerDoParallel(cl)
+cl <- makeCluster(n_cores)
+registerDoParallel(cl)
 
-# gres <- foreach(rnr = 1:results_nrows
-#         , .packages = c("jsonlite"
-#                         , "randomForest"
-#                         , "rattle"
-#                         , "inTrees"
-#                         , "sbrl"))  %dopar% {
+gres <- foreach(rnr = 1:results_nrows
+        , .packages = c("jsonlite"
+                        , "randomForest"
+                        , "ada"
+                        , "rattle"
+                        , "inTrees"
+                        , "sbrl"))  %dopar% {
 
 for (rnr in 1:results_nrows) {
           
@@ -31,7 +34,7 @@ for (rnr in 1:results_nrows) {
           i <- ((rnr - 1) %% length(datasetnames)) + 1
           
           # encapsulated set up
-          data_prep(i)
+          data_prep(i, max_tests = 1000)
           
           # classifier prep
           fmla <- as.formula(paste(class_cols[i], "~ ."))
@@ -42,6 +45,15 @@ for (rnr in 1:results_nrows) {
             , "_best_params_rnst_"
             , random_states[r]
             , ".json"))))$n_estimators
+          
+          if (model == "rf") {
+            maxnodes <- 2^fromJSON(readLines(file(paste0(
+              resfilesdirs[i]
+              , model
+              , "_best_params_rnst_"
+              , random_states[r]
+              , ".json"))))$max_depth
+          }
           
           if (model == "ada") {
             base_estimator <- fromJSON(readLines(file(paste0(
@@ -56,9 +68,11 @@ for (rnr in 1:results_nrows) {
           
           # build forest
           set.seed(random_states[r])
-          if (model == "rf") forest <- randomForest(fmla, data=dat_train, ntree=ntree)
-          if (model == "ada") forest <- ada(fmla, data=dat_train, iter=ntree
-                                            , rpart.control(maxdepth=max_depth))
+          if (model == "rf") forest <- randomForest(fmla, data = dat_train
+                                                    , ntree = ntree
+                                                    , maxnodes = maxnodes)
+          if (model == "ada") forest <- ada(fmla, data = dat_train, iter = ntree
+                                            , rpart.control(maxdepth = max_depth))
           forest_label <- which_class(as.character(predict(forest
                                                            , newdata = ds_container$X_test)))
           # run method and benchmark
@@ -69,7 +83,8 @@ for (rnr in 1:results_nrows) {
                                            , maxdepth = 1000
             )
           } else {
-            benchmark <- sbrl_benchmark(ds_container=ds_container, classes)
+            benchmark <- sbrl_benchmark(ds_container=ds_container
+                                        , classes = classes)
           }
           
           # collect results
@@ -142,6 +157,7 @@ for (rnr in 1:results_nrows) {
                                , target_class = benchmark$label - 1  # conform with Python zero base
                                , target_class_label = classes[benchmark$label]
                                , forest_vote_share = forest_vote_share
+                               , accummulated_points = 0 # only meaningful for CHIRPS
                                , prior = prior
                                , precision_tr = proxy_precision
                                , stability_tr	= proxy_stability
@@ -212,4 +228,5 @@ for (rnr in 1:results_nrows) {
           benchmark
 }
 
-# stopCluster(cl)
+} 
+stopCluster(cl)

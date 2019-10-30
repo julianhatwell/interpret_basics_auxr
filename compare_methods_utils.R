@@ -138,7 +138,7 @@ get_train_test_sizes <- function(i) {
   return(c(length(train_idx), length(test_idx)))
 }
 
-data_prep <- function(i) {
+data_prep <- function(i, max_tests) {
   dat <- read.csv(gzfile(paste0(data_dir, data_files[i])))
   # ensure y is a factor
   if (class(dat[, class_cols[i]]) != "factor") dat[, class_cols[i]] <- factor(dat[, class_cols[i]])
@@ -150,7 +150,7 @@ data_prep <- function(i) {
   dat_train <<- dat[train_idx, ]
   dat_test <<- dat[test_idx, ]
   
-  n_test <<- length(test_idx)
+  n_test <<- min(length(test_idx), max_tests)
   
   ds_container <<- list(
     X_train = dat_train[, names(dat) != class_cols[i]],

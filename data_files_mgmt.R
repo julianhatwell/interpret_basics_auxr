@@ -1,6 +1,6 @@
 # data settings
-# data_dir <- "C:\\Users\\id126493\\Documents\\GitHub\\explain_te\\CHIRPS\\datafiles\\"
-data_dir <- "C:\\Users\\Crutt\\Documents\\GitHub\\explain_te\\CHIRPS\\datafiles\\"
+data_dir <- "C:\\Users\\id126493\\Documents\\GitHub\\explain_te\\CHIRPS\\datafiles\\"
+# data_dir <- "C:\\Users\\Crutt\\Documents\\GitHub\\explain_te\\CHIRPS\\datafiles\\"
 # data_dir <- "~/github/explain_te/CHIRPS/datafiles/"
 # datafilesdir <- "c:\\Dev\\Study\\Python\\explain_te\\forest_surveyor\\datafiles\\"
 
@@ -33,15 +33,15 @@ class_cols <- c(
 )
 
 data_files <- c(
-  "adult_small_samp.csv.gz"
-  , "bankmark_samp.csv.gz"
+  "adult.csv.gz"
+  , "bankmark.csv.gz"
   , "car.csv.gz"
   , "cardio.csv.gz"
   , "credit.csv.gz"
   , "german.csv.gz"
   , "lending_tiny_samp.csv.gz"
-  , "nursery_samp.csv.gz"
-  , "rcdv_samp.csv.gz"
+  , "nursery.csv.gz"
+  , "rcdv.csv.gz"
 )
 
 get_datasetnames <- function(x) {
