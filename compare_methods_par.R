@@ -3,7 +3,7 @@ library(ada)
 library(randomForest)
 library(foreach)
 library(doParallel)
-n_cores <- 1 # detectCores() - 2
+n_cores <- 2 # detectCores() - 2
 random_states <- 123 # :152
 source("compare_methods_utils.R")
 
@@ -34,7 +34,7 @@ for (rnr in 1:results_nrows) {
           i <- ((rnr - 1) %% length(datasetnames)) + 1
           
           # encapsulated set up
-          data_prep(i, max_tests = 1000)
+          data_prep(i, max_tests = max_tests)
           
           # classifier prep
           fmla <- as.formula(paste(class_cols[i], "~ ."))
@@ -80,7 +80,7 @@ for (rnr in 1:results_nrows) {
             benchmark <- inTrees_benchmark(forest = forest
                                            , ds_container = ds_container
                                            , ntree = ntree
-                                           , maxdepth = 1000
+                                           , maxdepth = 32
             )
           } else {
             benchmark <- sbrl_benchmark(ds_container=ds_container

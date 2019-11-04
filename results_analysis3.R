@@ -7,16 +7,18 @@ library(tikzDevice)
 library(cowplot) # get legend out of a ggplot
 
 # plot themes
-# source("C:\\Users\\id126493\\OneDrive\\Documents\\PhD\\KTheme.R")
-source("C:\\Users\\Crutt\\OneDrive\\Documents\\PhD\\KTheme.R")
+source("C:\\Users\\id126493\\OneDrive\\Documents\\PhD\\KTheme.R")
+# source("C:\\Users\\Crutt\\OneDrive\\Documents\\PhD\\KTheme.R")
 reds <- k.grad.red.rev(2)
 ongs <- k.grad.orange.rev(2)
 blus <- k.grad.blue.rev(2)
 grns <- k.grad.green.rev(2)
 prps <- k.grad.purple.rev(2)
 nuts <- myPalNeut
-algs <- c(algorithms, "CHIRPS")
-myPal <- c(reds[2], ongs[2], blus[2], grns[2], k.pink)
+# algs <- c(algorithms, "CHIRPS")
+algs <- algorithms
+# myPal <- c(reds[2], ongs[2], blus[2], grns[2], k.pink)
+myPal <- c(blus[2], grns[2], k.pink)
 myAlph <- c(rep(0.4, length(algs) - 1), 1)
 names(myPal) <- algs
 names(myAlph) <- algs
@@ -30,10 +32,10 @@ sens_colos <- scale_colour_manual(values = c(k.purple, k.pink, k.brightblue))
 train_set_size <- integer(length(datasetnames))
 test_set_size <- integer(length(datasetnames))
 
-for (i in seq_along(datasetnames)) {
-  train_set_size[i] <- get_train_test_sizes(i)[1]
-  test_set_size[i] <- get_train_test_sizes(i)[2]
-}
+# for (i in seq_along(datasetnames)) {
+#   train_set_size[i] <- get_train_test_sizes(i)[1]
+#   test_set_size[i] <- get_train_test_sizes(i)[2]
+# }
 
 names(train_set_size) <- datasetnames
 names(test_set_size) <- datasetnames
