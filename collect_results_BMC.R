@@ -27,7 +27,7 @@ colos <- scale_colour_manual(
 alpas <- scale_alpha_manual(values = myAlph)
 
 # data management
-project_dir <- "V:\\whiteboxing\\BMC\\"
+project_dir <- "V:\\whiteboxing\\BMC2\\"
 # project_dir <- "C:\\Users\\Crutt\\Documents\\whiteboxing\\BMC\\"
 # project_dir <- "/home/julian/whiteboxing/"
 
@@ -156,38 +156,85 @@ comp_results <- within(comp_results, {
   wxcoverage.tt. <- xcoverage.tt. * (nci.tt./(ci.tt. + nci.tt.))
 })
 
-with(comp_results, tapply(precision.tt.
-                          , list(comp_results$dataset
-                                 , comp_results$algorithm)
-                          , mean))
-with(comp_results, tapply(stability.tt.
-                          , list(comp_results$dataset
-                                 , comp_results$algorithm)
-                          , mean))
-with(comp_results, tapply(coverage.tt.
-                          , list(comp_results$dataset
-                                 , comp_results$algorithm)
-                          , mean))
-with(comp_results, tapply(wxcoverage.tt.
+precs <- with(comp_results, tapply(precision.tt.
                           , list(comp_results$dataset
                                  , comp_results$algorithm)
                           , mean))
 
+if (!("lore" %in% dimnames(precs)[[2]])) {
+  precs <- cbind(precs, lore = NA)
+}
+
+stabs <- with(comp_results, tapply(stability.tt.
+                          , list(comp_results$dataset
+                                 , comp_results$algorithm)
+                          , mean))
+
+if (!("lore" %in% dimnames(stabs)[[2]])) {
+  stabs <- cbind(stabs, lore = NA)
+}
+
+
+covs <- with(comp_results, tapply(coverage.tt.
+                          , list(comp_results$dataset
+                                 , comp_results$algorithm)
+                          , mean))
+
+if (!("lore" %in% dimnames(covs)[[2]])) {
+  covs <- cbind(covs, lore = NA)
+}
+
+
+wxcovs <- with(comp_results, tapply(wxcoverage.tt.
+                          , list(comp_results$dataset
+                                 , comp_results$algorithm)
+                          , mean))
+
+if (!("lore" %in% dimnames(wxcovs)[[2]])) {
+  wxcovs <- cbind(wxcovs, lore = NA)
+}
+
+
 for (ds in datasetnames) {
+  print(ds)
   cres <- comp_results %>% filter(dataset == ds) %>%
     dplyr::select(instance_id, dataset, stability.tr., algorithm)
   cres <- spread(cres, algorithm, stability.tr.)
-  cres_frd <- friedman.test(as.matrix(cres[, algorithms[c(1, 3)]]))
-  print(ds)
-  print(cres_frd)
   
-  chisqstat <- cres_frd$statistic
-  df1 <- cres_frd$parameter
-  N <- nrow(cres)
-  fstat <- (chisqstat * (N - 1)) / (N * df1 - chisqstat)
-  names(fstat) <- "Friedman F"
-  df2 <- df1 * (N - 1)
-  fpvalue <- pf(fstat, df1=df1, df2=df2, lower.tail = FALSE)
-  print(fstat)
-  print(fpvalue)
+  if (is.na(stabs[ds, "lore"])) {
+    
+    print("mean ranks")
+    mrs <- apply(apply(-cres[, algorithms[c(1, 3)]], 1, rank), 1, mean)
+    print(mrs)
+    cres_ttest <- t.test(cres[, algorithms[1]], cres[, algorithms[3]], paired = TRUE)
+    cres_wxtest <- wilcox.test(cres[, algorithms[1]], cres[, algorithms[3]], paired = TRUE)
+    print(cres_ttest)
+    print(cres_wxtest)
+  
+    } else {
+    
+    print("mean ranks")
+    mrs <- apply(apply(-cres[, algorithms], 1, rank), 1, mean)
+    print(mrs)
+
+    cres_frd <- friedman.test(as.matrix(cres))
+    print(ds)
+    print(cres_frd)
+    
+    chisqstat <- cres_frd$statistic
+    df1 <- cres_frd$parameter
+    N <- nrow(cres)
+    fstat <- (chisqstat * (N - 1)) / (N * df1 - chisqstat)
+    names(fstat) <- "Friedman F"
+    df2 <- df1 * (N - 1)
+    fpvalue <- pf(fstat, df1=df1, df2=df2, lower.tail = FALSE)
+    print(fstat)
+    print(fpvalue)
+    
+    cres_nem <- posthoc.friedman.nemenyi.test(as.matrix(cres[, algorithms]))
+    print(cres_nem)  
+    
+  }
+  
+  
 }
