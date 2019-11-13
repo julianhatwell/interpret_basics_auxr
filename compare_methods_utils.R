@@ -250,7 +250,15 @@ inTrees_benchmark <- function(forest, ds_container, ntree, maxdepth) {
   model_accurate <- ifelse(learner_label == as.numeric(ds_container$y_test), 1, 0)
   
   rule_idx <- whichRule_inTrees(learner, ds_container$X_test)
-  rl_ln <- sapply(gregexpr("&", learner[rule_idx,4]), function(x) {length(x)[[1]] + 1})
+  rl_ln <- sapply(gregexpr("&", learner[rule_idx,4])
+                  , function(x) {
+                      if (x == -1) {
+                        return(0)
+                      } else {
+                        length(x)[[1]][1] + 1
+                        }
+                    })
+                                                        
   
   return(list(this_i = i
               , this_r = r
@@ -301,13 +309,13 @@ time_per_explanation <- function(b_time, c_time, n_test) {
 sbrl_benchmark <- function(ds_container, classes) {
   begin_time <- Sys.time()
   # transform for sbrl
-  if (datasetnames[i] == "adult_small_samp") zero_val_label <- "<=50K"
-  if (datasetnames[i] == "bankmark_samp") zero_val_label <- "no"
-  if (datasetnames[i] == "car") zero_val_label <- "acc"
-  if (datasetnames[i] == "credit") zero_val_label <- "minus"
-  if (datasetnames[i] == "german") zero_val_label <- "bad"
-  if (datasetnames[i] == "lending_tiny_samp") zero_val_label <- "Charged Off"
-  if (datasetnames[i] == "rcdv_samp") zero_val_label <- "N"
+  if (get_datasetname_stems(datasetnames[i]) == "adult") zero_val_label <- "<=50K"
+  if (get_datasetname_stems(datasetnames[i]) == "bankmark") zero_val_label <- "no"
+  if (get_datasetname_stems(datasetnames[i]) == "car") zero_val_label <- "acc"
+  if (get_datasetname_stems(datasetnames[i]) == "credit") zero_val_label <- "minus"
+  if (get_datasetname_stems(datasetnames[i]) == "german") zero_val_label <- "bad"
+  if (get_datasetname_stems(datasetnames[i]) == "lending") zero_val_label <- "Charged Off"
+  if (get_datasetname_stems(datasetnames[i]) == "rcdv") zero_val_label <- "N"
   
   train_label <- set_labels(ds_container$y_train, zero_val_label)
   test_label <- set_labels(ds_container$y_test, zero_val_label)
