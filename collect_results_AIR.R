@@ -1,3 +1,6 @@
+options(max.print=20*72)
+algorithms <- c("Anchors", "CHIRPS") # dfrgTrs, inTrees, BRL
+
 # plot themes
 source("KTheme.R")
 # source("C:\\Users\\id126493\\OneDrive\\Documents\\PhD\\KTheme.R")
@@ -28,12 +31,6 @@ if (grep("linux", Sys.getenv()[['R_LIBS_USER']])) {
   "\\"
 }
 
-prob_to_odds <- function(p) p / (1 - p)
-odds_to_prob <- function(o) o / (1 + o)
-sigmoid_confint <- function(x) odds_to_prob(exp(mean(log(prob_to_odds(x))) + c(-1, 1) * qnorm(0.95, sd = sd(log(prob_to_odds(x))))))
-
-algorithms <- c("Anchors", "CHIRPS") # dfrgTrs, inTrees, BRL
-
 # data management
 project_dir <- "/datadisk/whiteboxing/benchmarks2/"
 # project_dir <- "C:\\Users\\Crutt\\Documents\\whiteboxing\\BMC\\"
@@ -60,6 +57,16 @@ n_classes <- c(2
                , 2
 )
 
+difficulty <- c("large"
+                , "small"
+                , "small"
+                , "small"
+                , "small"
+                , "small"
+                , "small"
+                , "small"
+                ,"large")
+
 class_cols <- c(
   "income"
   , "y"
@@ -72,11 +79,11 @@ class_cols <- c(
   , "recid"
 )
 
-datasets_master <- data.frame(class_cols, n_classes)
+datasets_master <- data.frame(class_cols, n_classes, difficulty)
 rownames(datasets_master) <- datasetnames
 
 # before all the results are in
-datasets_master <- datasets_master[c("bankmark", "car", "cardio", "credit", "german", "lending", "nursery"), ]
+# datasets_master <- datasets_master[c("adult", "bankmark", "car", "cardio", "credit", "german", "lending", "nursery", "rcdv"), ]
 
 resfilesdirs <- paste0(project_dir, row.names(datasets_master), pathsep)
 sensdirs <- paste0(resfilesdirs, "rf_sensitivity", pathsep)
@@ -120,7 +127,7 @@ for (i in seq_along(sensdirs)) {
       score_func <- rep(sf, nrow(results))
       weighting <- rep(wht, nrow(results))
       
-      results <- cbind(results, as.data.frame(cbind(support, alpha_paths, disc_path_bins, score_func, weighting)))
+      results <- cbind(results, as.data.frame(cbind(support, alpha_paths, disc_path_bins, score_func, weighting), stringsAsFactors = FALSE))
       if (first_pass) {
         main_results <- results
         first_pass <- FALSE
@@ -141,6 +148,7 @@ sens_results <- main_results %>% mutate(
   , predicted.class.label = factor(predicted.class.label)
   , target.class = factor(target.class)
   , target.class.label = factor(target.class.label)
+  , support = factor(ifelse(ifelse(datasets_master[dataset_name, "difficulty"] == "large", as.numeric(support) - 0.1, as.numeric(support)) == 0.1, "A", "B"))
   , weighting = factor(weighting)
   , score_func = factor(score_func)
   , wxcoverage.tr. = xcoverage.tr. * (nci.tr./(ci.tr. + nci.tr.))
@@ -157,46 +165,61 @@ sens_groups <- with(sens_results, expand.grid(
 # provide id numbers
 sens_groups$id <- as.numeric(rownames(sens_groups))
 
-sensitivity_analysis <- list()
-measure <- "stability.tt."
-measure <- "wxcoverage.tt."
-# measure <- "rule.length"
-for (ds in rownames(datasets_master)) {
-  sv <- filter(sens_results, dataset_name == ds)
-  # order must be same as sens_groups above
-  sens_values <- tapply(sv[[measure]], list(sv$support
-                               , sv$alpha_paths
-                               , sv$disc_path_bins
-                               , sv$score_func
-                               , sv$weighting), identity)
-  
-  sens_values <- matrix(unlist(sens_values), ncol = nrow(sens_groups))
-  
-  # get a first taste of results
-  sens_groups$mean <- apply(sens_values, 2, mean)
-  sens_groups$sd <- apply(sens_values, 2, sd)
-  sig_ci <- apply(sens_values, 2, sigmoid_confint)
-  sens_groups$sig_ci_lwr <-sig_ci[1, ]
-  sens_groups$sig_ci_upr <-sig_ci[2, ]
-  sens_groups$st.err <- sens_groups$sd / sqrt(test_set_size[ds])
-  sens_groups$rank_mean <- colMeans(t(apply(-sens_values, 1, rank)))
-  sens_groups$rank_sum <- colSums(t(apply(-sens_values, 1, rank)))
-  
-  cn <- apply(select(sens_groups, support, alpha, bins, func, weights), 1, paste, collapse = "_")
-  dimnames(sens_values) <- list(NULL, cn)
-  ph <- posthoc.friedman.nemenyi.test(sens_values)
-  ph[[3]][which.min(ph[[3]])]
-
-  
-  test_set_size[ds] <- nrow(sens_values)
-  
-  sensitivity_analysis[[ds]] <- sens_groups
+get_sensitivity <- function(measure) {
+  sensitivity_analysis <- list()
+  for (ds in rownames(datasets_master)) {
+    sv <- filter(sens_results, dataset_name == ds)
+    # order must be same as sens_groups above
+    sens_values <- tapply(sv[[measure]], list(sv$support
+                                              , sv$alpha_paths
+                                              , sv$disc_path_bins
+                                              , sv$score_func
+                                              , sv$weighting), identity)
+    
+    sens_values <- matrix(unlist(sens_values), ncol = nrow(sens_groups))
+    test_set_size[ds] <- nrow(sens_values)
+    # get a first taste of results
+    sens_groups$sd <- apply(sens_values, 2, sd)
+    sens_groups$st.err <- sens_groups$sd / sqrt(test_set_size[ds])
+    mn <- apply(sens_values, 2, mean)
+    sens_groups$lwr_mean_ci <- mn - sens_groups$st.err
+    sens_groups$mean <- mn
+    sens_groups$upr_mean_ci <- mn + sens_groups$st.err
+    qntl <- apply(sens_values, 2, quantile)
+    sens_groups$lwrq <- qntl[2, ]
+    sens_groups$median <- apply(sens_values, 2, median)
+    sens_groups$uprq <- qntl[4, ]
+    sens_groups$rank_mean <- colMeans(t(apply(sens_values, 1, rank)))
+    sens_groups$rank_sum <- colSums(t(apply(sens_values, 1, rank)))
+    
+    sensitivity_analysis[[ds]] <- sens_groups
+  }
+  return(sensitivity_analysis)
 }
-  
+
+get_best_sens <- function(sens) {
+  for (ds in rownames(datasets_master)) {
+    print(ds)
+    print(sens[[ds]][which.max(sens[[ds]][["rank_mean"]]), ])
+  }
+}
+
+stability_sens <- get_sensitivity("stability.tt.")
+wxcoverage_sens <- get_sensitivity("wxcoverage.tt.")
+rule.length_sens <- get_sensitivity("rule.length")
+
+get_best_sens(stability_sens)
+
+ds <- "cardio"
+stability_sens[[ds]]
+wxcoverage_sens[[ds]]
+rule.length_sens[[ds]]
+
 which.min(sensitivity_analysis[["german"]][["rank_mean"]])
+ph[[3]][which.min(ph[[3]])]
 
-
-dimnames(sens_values) <- list(NULL, )
+cn <- apply(select(sens_groups, support, alpha, bins, func, weights), 1, paste, collapse = "_")
+dimnames(sens_values) <- list(NULL, cn)
 rowMeans(apply(-cbind(sens_values[, cn[1:(length(cn) -1)][which.min(ph[[3]]) %/% (length(cn) -1)]],
 sens_values[, cn[2:length(cn)][which.min(ph[[3]]) %% (length(cn) -1)]]), 1, rank))
 

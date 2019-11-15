@@ -11,12 +11,21 @@ max_tests <- 1000
 
 model <- "rf"
 # model <- "ada"
-algorithm <- "inTrees"
-ntree_divisor <- 1
-inTrees_maxdepth <- 2
-# algorithm <- "BRL"
+
+# algorithm <- "inTrees"
+algorithm <- "BRL"
 
 results_nrows <- length(random_states) * length(datasetnames)
+
+# adult rnr <- 1; ntree_divisor <- 5; inTrees_maxdepth <- 8; lambda <- 10; eta <- 1; rule_maxlen <- 8; nchain <- 10
+# bankmark rnr <- 2; ntree_divisor <- 20; inTrees_maxdepth <- 8; lambda <- 2; eta <- 1; rule_maxlen <- 2; nchain <- 10
+# car rnr <- 3; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
+# cardio rnr <- 4; ntree_divisor <- 1; inTrees_maxdepth <- 8
+# credit rnr <- 5; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 8; nchain <- 10
+# german rnr <- 6; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 4; nchain <- 10
+# lending_tiny_samp rnr <- 7; ntree_divisor <- 1; inTrees_maxdepth <- 8 CANNOT
+# nursery rnr <- 8; ntree_divisor <- 1; inTrees_maxdepth <- 8
+# rcdv rnr <- 9; ntree_divisor <- 10; inTrees_maxdepth <- 8; lambda <- 10; eta <- 1; rule_maxlen <- 4; nchain <- 10
 
 # either
 # cl <- makeCluster(n_cores)
@@ -91,7 +100,7 @@ for (rnr in 1:results_nrows) {
                                           , classes = classes)
             }
             
-              # collect results
+            # collect     results
             tpe <- time_per_explanation(benchmark$begin_time
                                         , benchmark$completion_time
                                         , n_test)
