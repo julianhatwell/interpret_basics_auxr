@@ -18,12 +18,12 @@ algorithm <- "BRL"
 results_nrows <- length(random_states) * length(datasetnames)
 
 # adult rnr <- 1; ntree_divisor <- 5; inTrees_maxdepth <- 8; lambda <- 10; eta <- 1; rule_maxlen <- 8; nchain <- 10
-# bankmark rnr <- 2; ntree_divisor <- 20; inTrees_maxdepth <- 8; lambda <- 2; eta <- 1; rule_maxlen <- 2; nchain <- 10
+# bankmark rnr <- 2; ntree_divisor <- 20; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10 # BRL bankmark_samp
 # car rnr <- 3; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
-# cardio rnr <- 4; ntree_divisor <- 1; inTrees_maxdepth <- 8
+# cardio rnr <- 4; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 4; nchain <- 10
 # credit rnr <- 5; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 8; nchain <- 10
 # german rnr <- 6; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 4; nchain <- 10
-# lending_tiny_samp rnr <- 7; ntree_divisor <- 1; inTrees_maxdepth <- 8 CANNOT
+# lending_tiny_samp CANNOT BE DONE IN R
 # nursery rnr <- 8; ntree_divisor <- 1; inTrees_maxdepth <- 8
 # rcdv rnr <- 9; ntree_divisor <- 10; inTrees_maxdepth <- 8; lambda <- 10; eta <- 1; rule_maxlen <- 4; nchain <- 10
 
@@ -97,7 +97,11 @@ for (rnr in 1:results_nrows) {
               )
             } else {
               benchmark <- sbrl_benchmark(ds_container=ds_container
-                                          , classes = classes)
+                                          , classes = classes
+                                          , lambda = lambda
+                                          , eta = eta
+                                          , rule_maxlen = rule_maxlen
+                                          , nchain = nchain)
             }
             
             # collect     results
@@ -106,9 +110,9 @@ for (rnr in 1:results_nrows) {
                                         , n_test)
             results_init(n_test)
             for (j in 1:n_test) {
-              rule <- benchmark$rule_idx[j]
+              rule <- benchmark$rule[j]
               
-              covered_instances <- benchmark$rule_idx == rule
+              covered_instances <- apply_rule(rule, ds_container$X_test)
               covered_instances <- covered_instances[-j] # drop out current instance
               loo_true_labels <- as.character(ds_container$y_test)[-j]
   

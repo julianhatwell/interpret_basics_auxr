@@ -10,7 +10,7 @@ project_dir <- "V:\\whiteboxing\\tests\\"
 project_dir <- "/datadisk/whiteboxing/benchmarks/"
 
 datasetnames <- c("adult"
-                  , "bankmark"
+                  , "bankmark_samp"
                   , "car"
                   , "cardio"
                   , "credit"
@@ -42,7 +42,9 @@ class_cols <- c(
   , "recid"
 )
 
-datasets_master <- data.frame(class_cols, n_classes)
+positive_classes <- c(">50K", "yes", "acc", NA, "plus", "good", "Fully Paid", NA, "Y")
+
+datasets_master <- data.frame(class_cols, n_classes, positive_classes)
 
 rownames(datasets_master) <- datasetnames
 

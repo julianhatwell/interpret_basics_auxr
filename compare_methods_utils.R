@@ -2,6 +2,8 @@ library(sbrl)
 library(inTrees)
 library(jsonlite)
 library(rattle)
+library(rlang)
+library(dplyr)
 
 source("data_files_mgmt.R")
 
@@ -193,7 +195,7 @@ results_init <<- function(n_test) {
   forest_kl_div <<- numeric(n_test)
 }
 
-whichRule_inTrees <- function(learner, X) {
+intTrees_whichRule <- function(learner, X) {
   left_idx <- 1:nrow(X)
   rules_idx <- numeric(length(left_idx))
   for (i in 1:nrow(learner)) {
@@ -206,7 +208,7 @@ whichRule_inTrees <- function(learner, X) {
   return(rules_idx)
 }
 
-whichRule_sbrl <- function (model, tdata) 
+sbrl_whichRule <- function (model, tdata) 
 {
   mat_data_feature <- get_data_feature_mat(tdata, model$featurenames)
   mat_data_rules <- mat_data_feature %*% model$mat_feature_rule
@@ -249,16 +251,16 @@ inTrees_benchmark <- function(forest, ds_container, ntree, maxdepth) {
   learner_label <- which_class(applyLearner(learner, ds_container$X_test))
   model_accurate <- ifelse(learner_label == as.numeric(ds_container$y_test), 1, 0)
   
-  rule_idx <- whichRule_inTrees(learner, ds_container$X_test)
+  rule_idx <- intTrees_whichRule(learner, ds_container$X_test)
   rl_ln <- sapply(gregexpr("&", learner[rule_idx,4])
                   , function(x) {
-                      if (x == -1) {
-                        return(0)
-                      } else {
-                        length(x)[[1]][1] + 1
-                        }
-                    })
-                                                        
+                    if (x == -1) {
+                      return(0)
+                    } else {
+                      length(x)[[1]][1] + 1
+                    }
+                  })
+  
   
   return(list(this_i = i
               , this_r = r
@@ -281,7 +283,7 @@ inTrees_benchmark <- function(forest, ds_container, ntree, maxdepth) {
               , model_type="inTrees"
               , begin_time = begin_time
               , completion_time = Sys.time()
-              ))
+  ))
   
 }
 
@@ -294,8 +296,8 @@ sbrl_data_prep <- function(dat) {
   return(dat)
 }
 
-set_labels <- function(y_tr, zvl) {
-  factor(ifelse(y_tr == zvl, 0, 1)) # error if not in this format  
+set_labels <- function(y_tr, pc) {
+  factor(ifelse(y_tr != pc, 0, 1)) # error if not in this format  
 }
 
 time_per_explanation <- function(b_time, c_time, n_test) {
@@ -306,61 +308,175 @@ time_per_explanation <- function(b_time, c_time, n_test) {
   return(tpe)
 }
 
-sbrl_benchmark <- function(ds_container, classes) {
+sbrl_extract_rule_terms <- function(rule) {
+  if (rule == "{default}") return(rule)
+  rule <- gsub("\\{|\\}", "", rule)
+  rule <- strsplit(rule, "\\]")
+  var_names <- gregexpr(",?.+=", rule[[1]])
+  var_names <- gsub(",|=", "", mapply(FUN=regmatches, rule[[1]], var_names))
+  lwrs <- gregexpr(".*[\\(\\[][0-9.]*[0-9]*,", rule[[1]])
+  lwrs <- mapply(FUN=gsub, var_names, rep("", length(var_names)), mapply(FUN=regmatches, rule[[1]], lwrs))
+  lwrs <- gsub("\\[", "> ", gsub("\\(", ">= ", gsub("[,=]", "", lwrs)))
+  uprs <- gregexpr(",(?!.*,)[0-9.]*[0-9]*", rule[[1]], perl = TRUE)
+  uprs <- gsub(",", "< ", mapply(FUN=regmatches, rule[[1]], uprs))
+  uprs
+  list(var_names = var_names, lwrs = lwrs, uprs = uprs)
+}
+
+sbrl_generate_rule <- function(rt, reverse = FALSE) {
+  if (class(rt) != "list" && rt == "{default}") return(rt)
+  lwrs <- paste(rt$var_names, rt$lwrs)
+  uprs <- paste(rt$var_names, rt$uprs)
+  if (reverse) {
+    lwrs <- paste("!(", lwrs, ")")
+    uprs <- paste("!(", uprs, ")")
+    pairs <- paste("(", mapply(FUN = paste, lwrs, uprs, MoreArgs = list(sep = " | "), USE.NAMES = FALSE), ")")
+  } else {
+    pairs <- mapply(FUN = paste, lwrs, uprs, MoreArgs = list(sep = " & "), USE.NAMES = FALSE)
+  }
+  paste(pairs, collapse = " & ")
+}
+
+apply_rule <- function(rule, instances) {
+  if (rule == "{default}") return(rep(TRUE, nrow(instances)))
+  instances$idx <- rownames(instances)
+  covered <- instances %>% filter(eval(parse_expr(rule)))
+  return(ifelse(rownames(instances) %in% covered$idx, TRUE, FALSE))
+}
+
+sbrl_benchmark <- function(ds_container, classes, lambda, eta, rule_maxlen, nchain) {
   begin_time <- Sys.time()
+  
   # transform for sbrl
-  if (get_datasetname_stems(datasetnames[i]) == "adult") zero_val_label <- "<=50K"
-  if (get_datasetname_stems(datasetnames[i]) == "bankmark") zero_val_label <- "no"
-  if (get_datasetname_stems(datasetnames[i]) == "car") zero_val_label <- "acc"
-  if (get_datasetname_stems(datasetnames[i]) == "credit") zero_val_label <- "minus"
-  if (get_datasetname_stems(datasetnames[i]) == "german") zero_val_label <- "bad"
-  if (get_datasetname_stems(datasetnames[i]) == "lending") zero_val_label <- "Charged Off"
-  if (get_datasetname_stems(datasetnames[i]) == "rcdv") zero_val_label <- "N"
-  
-  train_label <- set_labels(ds_container$y_train, zero_val_label)
-  test_label <- set_labels(ds_container$y_test, zero_val_label)
-  
   train_data <- sbrl_data_prep(ds_container$X_train)
-  train_data <- cbind(train_data, label = train_label)
+  # using the quantile break points from the training set
+  test_data <- as.data.frame(sapply(names(ds_container$X_test), function(nm) {
+    x <- ds_container$X_test[[nm]]
+    if(class(x) != "factor") {
+      levs <- levels(train_data[[nm]])
+      br <- attr(train_data[[nm]], "breaks")
+      if (length(levs) == 4) {
+        factor(ifelse(x <= br[2], levs[1]
+                      , ifelse(x <= br[3], levs[2]
+                               , ifelse(x <= br[4], levs[3], levs[4])))
+               , levels = levs)
+      } else {
+        if (length(levs) == 3) {
+          factor(ifelse(x <= br[2], levs[1]
+                        , ifelse(x <= br[3], levs[2], levs[3]))
+                 , levels = levs)
+        } else {
+          factor(ifelse(x <= br[2], levs[1], levs[2])
+                 , levels = levs)
+        }
+      }
+    } else {
+      x
+    }
+  }))
   
-  test_data <- sbrl_data_prep(ds_container$X_test)
+  if (length(classes) > 2) {
+    class_iter <- classes
+  } else {
+    class_iter <- positive_classes[i]
+  }
   
-  model <- sbrl(tdata=train_data, rule_minlen=1, rule_maxlen=6, 
-                minsupport_pos=0.05, minsupport_neg=0.05,
-                lambda=10.0, eta=4, nchain=10)
+  sbrls <- list()
+  for (pc in class_iter) {
+    # label for training
+    train_label <- set_labels(ds_container$y_train, pc)
+    # reset
+    train_data$label <- NULL
+    train_data <- cbind(train_data, label = train_label)
+    test_label <- set_labels(ds_container$y_test, pc)
+    
+    sbrls[[pc]] <- list()
+    sbrls[[pc]]$model <- sbrl(tdata=train_data, rule_minlen=1, rule_maxlen=rule_maxlen, 
+                              minsupport_pos=0.05, minsupport_neg=0.05,
+                              lambda=lambda, eta=eta, nchain=nchain)
+    
+    sbrls[[pc]]$preds <- predict(sbrls[[pc]]$model, tdata=test_data)$V2
+    sbrls[[pc]]$rules_plus_default <- c(sbrls[[pc]]$model$rulenames, "{default}")
+    sbrls[[pc]]$n_rules <- length(sbrls[[pc]]$model$rulenames) + 1
+    sbrls[[pc]]$rule_idx <- sbrl_whichRule(sbrls[[pc]]$model, test_data)
+    sbrls[[pc]]$rule_pos <- sapply(sbrls[[pc]]$rule_idx, function(x) {which(sbrls[[pc]]$model$rs$V1 == x)}) # create a positional index
+    sbrls[[pc]]$rule_idx <- ifelse(sbrls[[pc]]$rule_idx == 0, sbrls[[pc]]$n_rules, sbrls[[pc]]$rule_idx) # makes rule extract easier
+    sbrls[[pc]]$rl_ln <- sapply(gregexpr("=", sbrls[[pc]]$rules_plus_default[sbrls[[pc]]$rule_idx]), function(x) {ifelse(x[1] == -1, 0, length(x)[1])})
+    sbrls[[pc]]$rule <- sbrls[[pc]]$rules_plus_default[sbrls[[pc]]$rule_idx]
+    
+    default_rule_pos <- max(sbrls[[pc]]$rule_pos)
+    concatenate_rule <- function(rule_pos) {
+      
+      if (rule_pos == default_rule_pos) return("{default}")
+      if (rule_pos == 1) return(sbrl_generate_rule(sbrl_extract_rule_terms(sbrls[[pc]]$rules_plus_default[sbrls[[pc]]$model$rs$V1[rule_pos]])))
+      
+      paste(
+        paste(
+          sapply(sapply(1:(rule_pos - 1), function(pos) {
+          sbrls[[pc]]$rules_plus_default[sbrls[[pc]]$model$rs$V1[pos]]
+        }), function(rul) {
+          sbrl_generate_rule(sbrl_extract_rule_terms(rul), reverse = TRUE)
+        })
+        , collapse = " & ")
+      , "&", sbrl_generate_rule(sbrl_extract_rule_terms(sbrls[[pc]]$rules_plus_default[sbrls[[pc]]$model$rs$V1[rule_pos]]))
+      )
+    }
+    sbrls[[pc]]$concatenated_rule <- sapply(sbrls[[pc]]$rule_pos, concatenate_rule)
+  }
   
-  sbrl_label <- ifelse(predict(model, tdata=test_data)$V1 > 0.5, 1, 2)
-  model_accurate <- ifelse(sbrl_label == as.numeric(test_label), 1, 0)
-  rules_plus_default <- c(model$rulenames, "{default}") # format of returned rules. The = sign will help counting 
-  n_rules <- length(model$rulenames) + 1
-  rule_idx <- whichRule_sbrl(model, test_data)
-  rule_pos <- sapply(rule_idx, function(x) {which(model$rs$V1 == x)}) # create a positional index
-  
-  rule_idx <- ifelse(rule_idx == 0, n_rules, rule_idx) # makes rule extract easier
-  rl_ln <- sapply(gregexpr("=", rules_plus_default[rule_idx]), function(x) {ifelse(x[1] == -1, 0, length(x)[1])})
-  rule <- rules_plus_default[rule_idx]
-  
-  return(list(this_i = i
+  out <- list(this_i = i
               , this_r = r
               , this_run = length(random_states) * (i - 1) + r
               , random_state = random_states[r]
               , datasetname = datasetnames[i]
-              , label=sbrl_label
-              , rule_idx = rule_pos
-              , rl_ln = rl_ln
-              , unique_rules = length(model$rs$V1)
-              , n_rules_used = length(unique(rule_idx))
-              , rule = rule
-              , median_rule_cascade = median(rule_pos)
-              , mean_rule_cascade = mean(rule_pos)
-              , sd_rule_cascade = sd(rule_pos)
-              , mean_rulelen = mean(rl_ln)
-              , sd_rulelen = sd(rl_ln)
-              , model = model
-              , model_accurate = model_accurate
               , model_type="sbrl"
               , begin_time = begin_time
-              , completion_time = Sys.time()
-              ))
+              , completion_time = Sys.time())
+  
+  if (length(class_iter) == 1) { # binary classification
+    out$label <- ifelse(sbrls[[pc]]$preds > 0.5, 1, 2)
+    out$model_accurate <- ifelse(out$label == as.numeric(set_labels(ds_container$y_test, pc)), 1, 0)
+    out$rule_idx = sbrls[[pc]]$rule_pos
+    out$rl_ln <- sbrls[[pc]]$rl_ln
+    out$unique_rules <- length(sbrls[[pc]]$model$rs$V1)
+    out$n_rules_used <- length(unique(sbrls[[pc]]$rule_idx))
+    out$base_rule <- sbrls[[pc]]$rule
+    out$rule <- sbrls[[pc]]$concatenated_rule
+    out$model <- sbrls[[pc]]$model
+  } else { # multi-class
+    out$label <- factor(classes[
+      apply(sapply(sbrls, function(x) {x$preds}), 1, which.max)
+      ]
+      , levels = levels(ds_container$y_test))
+    out$model_accurate <- ifelse(out$label == ds_container$y_test, 1, 0)
+    
+    get_multi_class_item <- function(item) {
+      sapply(seq_along(out$label), function(x, item) {
+        sapply(classes, function(pc, it) {
+          sbrls[[pc]][[it]]}, it = item)[x, out$label[x]]
+      }, item = item)  
+    }
+    
+    out$label <- as.numeric(out$label)
+    out$rule_idx <- get_multi_class_item("rule_pos")
+    out$rl_ln <- as.vector(get_multi_class_item("rl_ln"))
+    out$unique_rules <- sum(sapply(classes, function(pc) {
+      length(sbrls[[pc]]$model$rs$V1)
+    }))
+    out$n_rules_used <-length(unique(apply(cbind(names(out$rule_idx), out$rule_idx), 1, paste0, collapse = "")))
+    out$rule_idx <- as.vector(out$rule_idx)
+    out$base_rule <- as.vector(get_multi_class_item("rule"))
+    out$rule <- as.vector(get_multi_class_item("concatenated_rule"))
+    out$model <- list()
+    for (pc in classes) {
+      out$model[[pc]] <- sbrls[[pc]]$model
+    }
+  }
+  out$median_rule_cascade <- median(out$rule_idx)
+  out$mean_rule_cascade <- mean(out$rule_idx)
+  out$sd_rule_cascade <- sd(out$rule_idx)
+  out$mean_rulelen <- mean(out$rl_ln)
+  out$sd_rulelen <- sd(out$rl_ln)
+  
+  return(out)
 }
-
