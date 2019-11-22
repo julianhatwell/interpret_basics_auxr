@@ -18,13 +18,13 @@ algorithm <- "BRL"
 results_nrows <- length(random_states) * length(datasetnames)
 
 # adult rnr <- 1; ntree_divisor <- 5; inTrees_maxdepth <- 8; lambda <- 10; eta <- 1; rule_maxlen <- 8; nchain <- 10
-# bankmark rnr <- 2; ntree_divisor <- 20; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10 # BRL bankmark_samp
+# bankmark rnr <- 2; ntree_divisor <- 20; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
 # car rnr <- 3; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
 # cardio rnr <- 4; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 4; nchain <- 10
 # credit rnr <- 5; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 8; nchain <- 10
 # german rnr <- 6; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 4; nchain <- 10
 # lending_tiny_samp CANNOT BE DONE IN R
-# nursery rnr <- 8; ntree_divisor <- 1; inTrees_maxdepth <- 8
+# nursery rnr <- 8; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
 # rcdv rnr <- 9; ntree_divisor <- 10; inTrees_maxdepth <- 8; lambda <- 10; eta <- 1; rule_maxlen <- 4; nchain <- 10
 
 # either

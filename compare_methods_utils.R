@@ -288,11 +288,21 @@ inTrees_benchmark <- function(forest, ds_container, ntree, maxdepth) {
 }
 
 sbrl_data_prep <- function(dat) {
+  discrete <- character(0)
+  continuous <- character(0)
   for(cl in names(dat)) {
     if(class(dat[[cl]]) != "factor") {
+      continuous <- c(continuous, cl)
       dat[[cl]] <- binning(dat[[cl]], method="quantile", ordered = FALSE)
+      levs <- levels(dat[[cl]])
+      levs <- sub(",", ";", levs)
+      levels(dat[[cl]]) <- levs
+    } else {
+      discrete <- c(discrete, cl)
     }
   }
+  discrete <<- discrete
+  continuous <<- continuous
   return(dat)
 }
 
@@ -308,33 +318,38 @@ time_per_explanation <- function(b_time, c_time, n_test) {
   return(tpe)
 }
 
-sbrl_extract_rule_terms <- function(rule) {
+sbrl_generate_rule <- function(rule, reverse = FALSE) {
   if (rule == "{default}") return(rule)
-  rule <- gsub("\\{|\\}", "", rule)
-  rule <- strsplit(rule, "\\]")
-  var_names <- gregexpr(",?.+=", rule[[1]])
-  var_names <- gsub(",|=", "", mapply(FUN=regmatches, rule[[1]], var_names))
-  lwrs <- gregexpr(".*[\\(\\[][0-9.]*[0-9]*,", rule[[1]])
-  lwrs <- mapply(FUN=gsub, var_names, rep("", length(var_names)), mapply(FUN=regmatches, rule[[1]], lwrs))
-  lwrs <- gsub("\\[", "> ", gsub("\\(", ">= ", gsub("[,=]", "", lwrs)))
-  uprs <- gregexpr(",(?!.*,)[0-9.]*[0-9]*", rule[[1]], perl = TRUE)
-  uprs <- gsub(",", "< ", mapply(FUN=regmatches, rule[[1]], uprs))
-  uprs
-  list(var_names = var_names, lwrs = lwrs, uprs = uprs)
-}
-
-sbrl_generate_rule <- function(rt, reverse = FALSE) {
-  if (class(rt) != "list" && rt == "{default}") return(rt)
-  lwrs <- paste(rt$var_names, rt$lwrs)
-  uprs <- paste(rt$var_names, rt$uprs)
+  rules <- gsub("\\{|\\}", "", rule)
+  rules <- strsplit(rules, ",")[[1]]
+  var_names <- regmatches(rules, regexpr("[^=]*", rules, perl = TRUE))
+  attrib_values <- mapply(sub, paste0(var_names, "="), "", rules)
+  lwrs <- sapply(attrib_values, function(av) {
+    rgx <- gregexpr("[\\(\\[][0-9.]*[0-9e\\+]*;", av)
+    if (rgx < 0) return(NA)
+    av <- regmatches(av, rgx)
+    av <- gsub("\\[", "> ", gsub("\\(", ">= ", gsub(";", "", av)))
+  })
+  uprs <- sapply(attrib_values, function(av) {
+    rgx <- gregexpr(";[0-9.]*[0-9e\\+]*", av)
+    if (rgx < 0) return(NA)
+    av <- regmatches(av, rgx)
+    av <- gsub(";", "< ", av)
+  })
+  
+  rule <- paste(
+    apply(matrix(c(ifelse(is.na(lwrs) & is.na(uprs), paste0(var_names, " == '", attrib_values, "'"), NA)
+                   , ifelse(is.na(lwrs), NA, paste(var_names, lwrs))
+                   , ifelse(is.na(uprs), NA, paste(var_names, uprs))), ncol = 3)
+          , 1, function(x) paste(x[!is.na(x)], collapse = " & "))
+    , collapse = " & "
+  )
+  
   if (reverse) {
-    lwrs <- paste("!(", lwrs, ")")
-    uprs <- paste("!(", uprs, ")")
-    pairs <- paste("(", mapply(FUN = paste, lwrs, uprs, MoreArgs = list(sep = " | "), USE.NAMES = FALSE), ")")
+    return(paste("!(", rule, ")"))
   } else {
-    pairs <- mapply(FUN = paste, lwrs, uprs, MoreArgs = list(sep = " & "), USE.NAMES = FALSE)
+    return(rule)
   }
-  paste(pairs, collapse = " & ")
 }
 
 apply_rule <- function(rule, instances) {
@@ -401,27 +416,33 @@ sbrl_benchmark <- function(ds_container, classes, lambda, eta, rule_maxlen, ncha
     sbrls[[pc]]$rule_idx <- sbrl_whichRule(sbrls[[pc]]$model, test_data)
     sbrls[[pc]]$rule_pos <- sapply(sbrls[[pc]]$rule_idx, function(x) {which(sbrls[[pc]]$model$rs$V1 == x)}) # create a positional index
     sbrls[[pc]]$rule_idx <- ifelse(sbrls[[pc]]$rule_idx == 0, sbrls[[pc]]$n_rules, sbrls[[pc]]$rule_idx) # makes rule extract easier
-    sbrls[[pc]]$rl_ln <- sapply(gregexpr("=", sbrls[[pc]]$rules_plus_default[sbrls[[pc]]$rule_idx]), function(x) {ifelse(x[1] == -1, 0, length(x)[1])})
+    # sbrls[[pc]]$rl_ln <- sapply(gregexpr("=", sbrls[[pc]]$rules_plus_default[sbrls[[pc]]$rule_idx]), function(x) {ifelse(x[1] == -1, 0, length(x)[1])})
     sbrls[[pc]]$rule <- sbrls[[pc]]$rules_plus_default[sbrls[[pc]]$rule_idx]
     
     default_rule_pos <- max(sbrls[[pc]]$rule_pos)
     concatenate_rule <- function(rule_pos) {
       
       if (rule_pos == default_rule_pos) return("{default}")
-      if (rule_pos == 1) return(sbrl_generate_rule(sbrl_extract_rule_terms(sbrls[[pc]]$rules_plus_default[sbrls[[pc]]$model$rs$V1[rule_pos]])))
+      if (rule_pos == 1) return(sbrl_generate_rule(sbrls[[pc]]$rules_plus_default[sbrls[[pc]]$model$rs$V1[rule_pos]]))
       
       paste(
         paste(
           sapply(sapply(1:(rule_pos - 1), function(pos) {
-          sbrls[[pc]]$rules_plus_default[sbrls[[pc]]$model$rs$V1[pos]]
-        }), function(rul) {
-          sbrl_generate_rule(sbrl_extract_rule_terms(rul), reverse = TRUE)
-        })
-        , collapse = " & ")
-      , "&", sbrl_generate_rule(sbrl_extract_rule_terms(sbrls[[pc]]$rules_plus_default[sbrls[[pc]]$model$rs$V1[rule_pos]]))
+            sbrls[[pc]]$rules_plus_default[sbrls[[pc]]$model$rs$V1[pos]]
+          }), sbrl_generate_rule, reverse = TRUE)
+          , collapse = " & "
+          )
+        , "&", sbrl_generate_rule(sbrls[[pc]]$rules_plus_default[sbrls[[pc]]$model$rs$V1[rule_pos]])
       )
     }
     sbrls[[pc]]$concatenated_rule <- sapply(sbrls[[pc]]$rule_pos, concatenate_rule)
+    sbrls[[pc]]$rl_ln <- sapply(sapply(sbrls[[pc]]$concatenated_rule, function(cr) {
+      unlist(sapply(c(discrete, continuous), function(dc, cr) {
+        if (grepl(dc, cr)) {
+          return(1)
+        }
+      }, cr = cr, USE.NAMES = FALSE))
+    }, USE.NAMES = FALSE), sum)
   }
   
   out <- list(this_i = i
