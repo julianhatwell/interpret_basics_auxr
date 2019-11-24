@@ -4,13 +4,13 @@
 data_dir <- "~/Documents/github/explain_te/CHIRPS/datafiles/"
 # datafilesdir <- "c:\\Dev\\Study\\Python\\explain_te\\forest_surveyor\\datafiles\\"
 
-project_dir <- "V:\\whiteboxing\\tests\\"
+# project_dir <- "V:\\whiteboxing\\tests\\"
 # project_dir <- "V:\\whiteboxing\\"
 # project_dir <- "C:\\Users\\Crutt\\Documents\\whiteboxing\\tests\\"
 project_dir <- "/datadisk/whiteboxing/benchmarks/"
 
 datasetnames <- c("adult"
-                  , "bankmark_samp"
+                  , "bankmark"
                   , "car"
                   , "cardio"
                   , "credit"
@@ -44,7 +44,7 @@ class_cols <- c(
 
 positive_classes <- c(">50K", "yes", "acc", NA, "plus", "good", "Fully Paid", NA, "Y")
 
-datasets_master <- data.frame(class_cols, n_classes, positive_classes)
+datasets_master <- data.frame(class_cols, n_classes, positive_classes, stringsAsFactors = FALSE)
 
 rownames(datasets_master) <- datasetnames
 

@@ -1,5 +1,8 @@
+library(dplyr)
+library(tidyr)
+library(PMCMRplus)
 options(max.print=20*72)
-algorithms <- c("Anchors", "CHIRPS") # dfrgTrs, inTrees, BRL
+algorithms <- c("Anchors", "BRL", "defragTrees", "inTrees", "CHIRPS") # 
 
 # plot themes
 source("KTheme.R")
@@ -12,7 +15,7 @@ grns <- k.grad.green.rev(2)
 prps <- k.grad.purple.rev(2)
 nuts <- myPalNeut
 
-myPal <- c(blus[2], grns[2], k.pink)
+myPal <- c(reds[2], ongs[2], blus[2], grns[2], k.pink)
 myAlph <- c(rep(0.4, length(algorithms) - 1), 1)
 names(myPal) <- algorithms
 names(myAlph) <- algorithms
@@ -20,9 +23,6 @@ colos <- scale_colour_manual(
   values = myPal)
 alpas <- scale_alpha_manual(values = myAlph)
 
-library(dplyr)
-library(tidyr)
-library(PMCMRplus)
 
 # setup
 if (grep("linux", Sys.getenv()[['R_LIBS_USER']])) {
@@ -32,60 +32,17 @@ if (grep("linux", Sys.getenv()[['R_LIBS_USER']])) {
 }
 
 # data management
-project_dir <- "/datadisk/whiteboxing/benchmarks2/"
-# project_dir <- "C:\\Users\\Crutt\\Documents\\whiteboxing\\BMC\\"
-# project_dir <- "/home/julian/whiteboxing/"
+source("data_files_mgmt.R")
+datasets_master$difficulty <- c("large"
+                              , "small"
+                              , "small"
+                              , "small"
+                              , "small"
+                              , "small"
+                              , "small"
+                              , "small"
+                              ,"large")
 
-datasetnames <- c("adult"
-                  , "bankmark"
-                  , "car"
-                  , "cardio"
-                  , "credit"
-                  , "german"
-                  , "lending_tiny_samp"
-                  , "nursery"
-                  , "rcdv")
-
-n_classes <- c(2
-               , 2
-               , 2
-               , 3
-               , 2
-               , 2
-               , 2
-               , 4
-               , 2
-)
-
-difficulty <- c("large"
-                , "small"
-                , "small"
-                , "small"
-                , "small"
-                , "small"
-                , "small"
-                , "small"
-                ,"large")
-
-class_cols <- c(
-  "income"
-  , "y"
-  , "acceptability"
-  , "NSP"
-  , "A16"
-  , "rating"
-  , "loan_status"
-  , "decision"
-  , "recid"
-)
-
-datasets_master <- data.frame(class_cols, n_classes, difficulty)
-rownames(datasets_master) <- datasetnames
-
-# before all the results are in
-# datasets_master <- datasets_master[c("adult", "bankmark", "car", "cardio", "credit", "german", "lending", "nursery", "rcdv"), ]
-
-resfilesdirs <- paste0(project_dir, row.names(datasets_master), pathsep)
 sensdirs <- paste0(resfilesdirs, "rf_sensitivity", pathsep)
 
 train_set_size <- integer(nrow(datasets_master))
@@ -210,22 +167,22 @@ rule.length_sens <- get_sensitivity("rule.length")
 
 get_best_sens(stability_sens)
 
-ds <- "cardio"
-stability_sens[[ds]]
-wxcoverage_sens[[ds]]
-rule.length_sens[[ds]]
-
-which.min(sensitivity_analysis[["german"]][["rank_mean"]])
-ph[[3]][which.min(ph[[3]])]
-
-cn <- apply(select(sens_groups, support, alpha, bins, func, weights), 1, paste, collapse = "_")
-dimnames(sens_values) <- list(NULL, cn)
-rowMeans(apply(-cbind(sens_values[, cn[1:(length(cn) -1)][which.min(ph[[3]]) %/% (length(cn) -1)]],
-sens_values[, cn[2:length(cn)][which.min(ph[[3]]) %% (length(cn) -1)]]), 1, rank))
-
-apply(sens_values, 2, mean)
-ds <- "car"
-sensitivity_analysis[[ds]][sensitivity_analysis[[ds]]$rank_mean == min(sensitivity_analysis[[ds]]$rank_mean), ] 
+# ds <- "cardio"
+# stability_sens[[ds]]
+# wxcoverage_sens[[ds]]
+# rule.length_sens[[ds]]
+# 
+# which.min(sensitivity_analysis[["german"]][["rank_mean"]])
+# ph[[3]][which.min(ph[[3]])]
+# 
+# cn <- apply(select(sens_groups, support, alpha, bins, func, weights), 1, paste, collapse = "_")
+# dimnames(sens_values) <- list(NULL, cn)
+# rowMeans(apply(-cbind(sens_values[, cn[1:(length(cn) -1)][which.min(ph[[3]]) %/% (length(cn) -1)]],
+# sens_values[, cn[2:length(cn)][which.min(ph[[3]]) %% (length(cn) -1)]]), 1, rank))
+# 
+# apply(sens_values, 2, mean)
+# ds <- "car"
+# sensitivity_analysis[[ds]][sensitivity_analysis[[ds]]$rank_mean == min(sensitivity_analysis[[ds]]$rank_mean), ] 
 
 
 # comparative analysis
@@ -240,10 +197,12 @@ for (i in seq_along(resfilesdirs)) {
   filenames <- dir(filepath)
   for (fn in filenames) {
     if (fn == "y_test.csv") {
-      test_set_size[datasetname] <- nrow(read.csv(paste0(filepath, fn)))
+      test_set_size[datasetname] <- nrow(read.csv(normalizePath(file.path(filepath, fn))
+                                                  , stringsAsFactors = FALSE))
     }
     if (fn == "y_train.csv") {
-      train_set_size[datasetname] <- nrow(read.csv(paste0(filepath, fn)))
+      train_set_size[datasetname] <- nrow(read.csv(normalizePath(file.path(filepath, fn))
+                                                   , stringsAsFactors = FALSE))
     }
     if (grepl(patt, fn)) {
       # load a sheet
@@ -301,7 +260,6 @@ for (i in seq_along(resfilesdirs)) {
   }
 }
 names(comp_results) <- sub("_name", "", names(comp_results))
-
 comp_results$algorithm <- ifelse(comp_results$algorithm == "greedy_stab", "CHIRPS", comp_results$algorithm)
 
 comp_results$pretty.rule[is.na(comp_results$pretty.rule)] <- "{default}"
@@ -319,85 +277,180 @@ comp_results <- within(comp_results, {
   wxcoverage.tt. <- xcoverage.tt. * (nci.tt./(ci.tt. + nci.tt.))
 })
 
-precs <- with(comp_results, tapply(precision.tt.
-                          , list(comp_results$dataset
-                                 , comp_results$algorithm)
-                          , mean))
-
-if (!("lore" %in% dimnames(precs)[[2]])) {
-  precs <- cbind(precs, lore = NA)
+get_func_of <- function(func, metric, ...) {
+  tapply(comp_results[[metric]]
+         , list(comp_results$dataset
+                , comp_results$algorithm)
+         , func, ...)
 }
 
-stabs <- with(comp_results, tapply(stability.tt.
-                          , list(comp_results$dataset
-                                 , comp_results$algorithm)
-                          , mean))
-
-if (!("lore" %in% dimnames(stabs)[[2]])) {
-  stabs <- cbind(stabs, lore = NA)
+get_mean_of <- function(metric) {
+  get_func_of(mean, metric, na.rm = TRUE)
+}
+get_sd_of <- function(metric) {
+  get_func_of(sd, metric, na.rm = TRUE)
+}
+get_median_of <- function(metric) {
+  get_func_of(median, metric, na.rm = TRUE)
 }
 
-
-covs <- with(comp_results, tapply(coverage.tt.
-                          , list(comp_results$dataset
-                                 , comp_results$algorithm)
-                          , mean))
-
-if (!("lore" %in% dimnames(covs)[[2]])) {
-  covs <- cbind(covs, lore = NA)
+lwrq <- function(x) {
+  quantile(x, probs = 0.25, na.rm = TRUE)
+}
+uprq <- function(x) {
+  quantile(x, probs = 0.75, na.rm = TRUE)
 }
 
-
-wxcovs <- with(comp_results, tapply(wxcoverage.tt.
-                          , list(comp_results$dataset
-                                 , comp_results$algorithm)
-                          , mean))
-
-if (!("lore" %in% dimnames(wxcovs)[[2]])) {
-  wxcovs <- cbind(wxcovs, lore = NA)
+get_lwrq_of <- function(metric) {
+  get_func_of(lwrq, metric)
+}
+get_uprq_of <- function(metric) {
+  get_func_of(uprq, metric)
 }
 
+test_set_size_sqrt <- sapply(test_set_size, function(x) {
+  sqrt(min(1000, x))
+})
 
+get_mean_ranks_of <- function(meas) {
+  qmeas <- quo(meas)
+  cres <- dplyr::select(comp_results, instance_id, dataset, !! qmeas, algorithm) %>%
+    group_by(dataset) %>%
+    spread(algorithm, !! qmeas)
+  cres[, algorithms] <- t(apply(-cres[, algorithms], 1, rank))
+  summarise(cres
+            , Anchors = mean(Anchors)
+            , BRL = mean(BRL)
+            , CHIRPS = mean(CHIRPS)
+            , defragTrees = mean(defragTrees)
+            , inTrees = mean(inTrees))  
+}
+
+meas <- "stability.tt."
+st_err <- get_sd_of(meas) / test_set_size_sqrt
+round(get_mean_of(meas), 4)
+round(st_err, 4)
+get_mean_ranks_of(meas)
+
+meas <- "precision.tt."
+st_err <- get_sd_of(meas) / test_set_size_sqrt
+round(get_mean_of(meas), 4)
+round(st_err, 4)
+get_mean_ranks_of(meas)
+
+meas <- "coverage.tt."
+st_err <- get_sd_of(meas) / test_set_size_sqrt
+round(get_mean_of(meas), 4)
+round(st_err, 4)
+get_mean_ranks_of(meas)
+
+meas <- "wxcoverage.tt."
+st_err <- get_sd_of(meas) / test_set_size_sqrt
+round(get_mean_of(meas), 4)
+round(st_err, 4)
+get_mean_ranks_of(meas)
+
+get_lwrq_of("precision.tt.")
+get_median_of("precision.tt.")
+get_uprq_of("precision.tt.")
+
+get_lwrq_of("stability.tt.")
+get_median_of("stability.tt.")
+get_uprq_of("stability.tt.")
+
+
+
+cres <- dplyr::select(comp_results, instance_id, dataset, !! qmeas, algorithm) %>%
+  mutate(dataset = factor(dataset), algorithm = factor(algorithm))
+ggplot(data = cres, aes(y = stability.tt.
+                        , colour = algorithm)) +
+  geom_boxplot() +
+  facet_wrap(~dataset) +
+  myGgTheme
+
+get_meds_for_plotting <- function(meas) {
+  
+  meds <- as.data.frame(get_median_of(meas))
+  meds$dataset <- rownames(meds)
+  meds <- gather(meds, algorithm, m, -dataset)
+  lwrqs <- as.data.frame(get_lwrq_of(meas))
+  lwrqs$dataset <- rownames(lwrqs)
+  lwrqs <- gather(lwrqs, algorithm, lwr, -dataset)
+  uprqs <- as.data.frame(get_uprq_of(meas))
+  uprqs$dataset <- rownames(uprqs)
+  uprqs <- gather(uprqs, algorithm, upr, -dataset)
+  meds$lwr <- lwrqs$lwr
+  meds$upr <- uprqs$upr
+  return(meds)
+  
+}
+
+get_means_for_plotting <- function(meas) {
+  
+  means <- as.data.frame(get_mean_of(meas))
+  means$dataset <- rownames(means)
+  means <- gather(means, algorithm, m, -dataset)
+  
+  st_errs <- as.data.frame(get_sd_of(meas) / test_set_size_sqrt)
+  st_errs$dataset <- rownames(st_errs)
+  st_errs <- gather(st_errs, algorithm, st_err, -dataset)
+  
+  means$lwr <- means$m - st_errs$st_err
+  means$upr <- means$m + st_errs$st_err
+  return(means)
+}
+
+lwrmedupr <- get_meds_for_plotting("stability.tt.")
+lwrmnupr <- get_means_for_plotting("stability.tt.")
+
+ggplot(data = get_means_for_plotting("stability.tt.")
+       , aes(y = m
+             , ymin = lwr
+             , ymax = upr
+             , x = dataset
+             , colour = algorithm
+             , group = algorithm
+             , alpha = algorithm)) +
+  myGgTheme +
+  geom_line() +
+  geom_point() +
+  geom_errorbar(width = 0.2) +
+  colos + 
+  alpas
+
+meas <- "stability.tt."
 for (ds in datasetnames) {
-  print(ds)
   cres <- comp_results %>% filter(dataset == ds) %>%
-    dplyr::select(instance_id, dataset, stability.tr., algorithm)
-  cres <- spread(cres, algorithm, stability.tr.)
-  
-  if (is.na(stabs[ds, "lore"])) {
-    
-    print("mean ranks")
-    mrs <- apply(apply(-cres[, algorithms[c(1, 3)]], 1, rank), 1, mean)
-    print(mrs)
-    cres_ttest <- t.test(cres[, algorithms[1]], cres[, algorithms[3]], paired = TRUE)
-    cres_wxtest <- wilcox.test(cres[, algorithms[1]], cres[, algorithms[3]], paired = TRUE)
-    print(cres_ttest)
-    print(cres_wxtest)
-  
-    } else {
-    
-    print("mean ranks")
-    mrs <- apply(apply(-cres[, algorithms], 1, rank), 1, mean)
-    print(mrs)
+    dplyr::select(instance_id, dataset, !! qmeas, algorithm)
+  cres <- spread(cres, algorithm, !! qmeas)
+  mrs <- apply(apply(-cres[, algorithms], 1, rank), 1, mean)
+  print(mrs)
 
-    cres_frd <- friedman.test(as.matrix(cres))
-    print(ds)
-    print(cres_frd)
-    
-    chisqstat <- cres_frd$statistic
-    df1 <- cres_frd$parameter
-    N <- nrow(cres)
-    fstat <- (chisqstat * (N - 1)) / (N * df1 - chisqstat)
-    names(fstat) <- "Friedman F"
-    df2 <- df1 * (N - 1)
-    fpvalue <- pf(fstat, df1=df1, df2=df2, lower.tail = FALSE)
-    print(fstat)
-    print(fpvalue)
-    
-    cres_nem <- posthoc.friedman.nemenyi.test(as.matrix(cres[, algorithms]))
-    print(cres_nem)  
-    
-  }
+  cres_frd <- friedman.test(as.matrix(cres))
+  print(ds)
+  print(cres_frd)
   
+  chisqstat <- cres_frd$statistic
+  df1 <- cres_frd$parameter
+  N <- nrow(cres)
+  fstat <- (chisqstat * (N - 1)) / (N * df1 - chisqstat)
+  names(fstat) <- "Friedman F"
+  df2 <- df1 * (N - 1)
+  fpvalue <- pf(fstat, df1=df1, df2=df2, lower.tail = FALSE)
+  print(fstat)
+  print(fpvalue)
   
+  cres_nem <- kwAllPairsNemenyiTest(cres[, algorithms])
+  print(cres_nem)  
 }
+
+
+
+# to do list
+# tabulate for each dataset - mean & mean rank; prec, stab, cov, xcov
+# plot for each of prec, stab, cov, xcov, line through mean or median with boxplot superimposed
+# fidelity for three global methods (n - number of zeros) / n
+# plot elapsed time on log scale
+# settings used for each run
+# sensitivity analysis plots (boxplots)
+# note that BRL requires pre-discretised data

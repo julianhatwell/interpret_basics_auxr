@@ -94,3 +94,30 @@ shading_k <- function(observed = NULL, residuals = NULL, expected = NULL,
   function(res) gpar(fill = ifelse(res > 0, col[1], col[2]))
 }
 class(shading_k) <- "grapcon_generator"
+
+# applied to ggplot2
+myGgTheme <- theme(plot.title = element_text(colour = myPalNeut[3], size = 10)
+                   , axis.title = element_text(colour = myPalNeut[3], size = 10)
+                   , axis.text = element_text(colour = myPalNeut[3], size = 7)
+                   , axis.title.y = element_text(margin = margin(t = 0, r = 15, b = 0, l = 0))
+                   , axis.line = element_line(colour = myPalNeut[3], size = 0.5)
+                   , axis.ticks = element_line(colour = myPalNeut[3], size = 0.5)
+                   , panel.background = element_blank()
+                   , panel.border = element_blank()
+                   , legend.title = element_text(colour = myPalNeut[3])
+                   , legend.text = element_text(colour = myPalNeut[3])
+                   , panel.grid.major = element_blank()
+                   , panel.grid.minor = element_blank()
+)
+
+myGgFillScale <- scale_fill_manual(values = c(myPalBrand[8], myPalBrand[2]))
+myGgFillScaleBlueOrange <- scale_fill_manual(values = c(k.brightblue, k.brightorange))
+myGgColourScale <- scale_colour_manual(values = c(myPalBrand[8], myPalBrand[2]))
+myGgColourScaleBlueOrange <- scale_colour_manual(values = c(k.brightblue, k.brightorange))
+myGgPinkGradient <- scale_color_gradient(low = myPalBrand[1], high = myPalBrand[1])
+myGgSeaGradient <- scale_color_gradient(low = myPalBrand[2], high = myPalBrand[2])
+myGgSapphireGradient <- scale_color_gradient(low = myPalBrand[3], high = myPalBrand[3])
+myGgHeatGradient <- scale_color_gradient2(low = myPalBrand[3]
+                                          , mid = myPalBrand[2]
+                                          , high = myPalBrand[1]
+                                          , midpoint = 3000)

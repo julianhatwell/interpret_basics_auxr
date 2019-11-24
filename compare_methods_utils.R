@@ -144,6 +144,7 @@ data_prep <- function(i, max_tests) {
   dat <- read.csv(gzfile(paste0(data_dir, data_files[i])))
   # ensure y is a factor
   if (class(dat[, class_cols[i]]) != "factor") dat[, class_cols[i]] <- factor(dat[, class_cols[i]])
+  if (!(is.na(datasets_master$positive_classes[i]))) dat[, class_cols[i]] <- relevel(dat[, class_cols[i]], datasets_master$positive_classes[i])
   classes <<- levels(dat[, class_cols[i]])
   
   # test train split according to indices exported from Python
@@ -355,7 +356,7 @@ sbrl_generate_rule <- function(rule, reverse = FALSE) {
 apply_rule <- function(rule, instances) {
   if (rule == "{default}") return(rep(TRUE, nrow(instances)))
   instances$idx <- rownames(instances)
-  covered <- instances %>% filter(eval(parse_expr(rule)))
+  covered <- tryCatch(filter(instances, eval(parse_expr(rule))), error = function(e) select_all(instances[0, ]) )
   return(ifelse(rownames(instances) %in% covered$idx, TRUE, FALSE))
 }
 

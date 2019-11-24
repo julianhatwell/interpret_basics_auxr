@@ -18,7 +18,7 @@ algorithm <- "BRL"
 results_nrows <- length(random_states) * length(datasetnames)
 
 # adult rnr <- 1; ntree_divisor <- 5; inTrees_maxdepth <- 8; lambda <- 10; eta <- 1; rule_maxlen <- 8; nchain <- 10
-# bankmark rnr <- 2; ntree_divisor <- 20; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
+# bankmark rnr <- 2; ntree_divisor <- 20; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 4; nchain <- 10
 # car rnr <- 3; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
 # cardio rnr <- 4; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 4; nchain <- 10
 # credit rnr <- 5; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 8; nchain <- 10
@@ -125,8 +125,8 @@ for (rnr in 1:results_nrows) {
                              , predict.all = TRUE)$individual ==
                        classes[forest_label[j]])
               prior[j] <- instance_results[["prior"]][forest_label[j]]
-              coverage[j] <- instance_results[["coverage"]][1]
-              xcoverage[j] <- instance_results[["xcoverage"]][1]
+              coverage[j] <- instance_results[["coverage"]]
+              xcoverage[j] <- instance_results[["xcoverage"]]
               proxy_precision[j] <- instance_results[["posterior"]][benchmark$label[j]]
               proxy_stability[j] <- instance_results[["stability"]][benchmark$label[j]]
               proxy_recall[j] <- instance_results[["recall"]][benchmark$label[j]]
