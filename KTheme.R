@@ -36,7 +36,7 @@ myPalBrandContrasts <- c(k.purple, k.brightorange, k.lime
                     , k.darkblue, k.pink, k.deepgreen
                     , k.orange, k.brightblue, k.darkred)
 
-myPalNeut <- c(k.warmgrey9, k.warmgrey2, k.coolgrey9, k.coolgrey4, k.wheat, k.stone)
+myPalNeut <- c(k.warmgrey9, k.warmgrey2, k.coolgrey9, k.coolgrey4, k.wheat, k.stone,  "#414346")
 myPalNeut2 <- c(k.coolgrey4, k.coolgrey9, k.warmgrey9, k.warmgrey2, k.stone, k.wheat)
 
 k.grad.purple <- colorRampPalette(c("#1D165D", "#7C5DC6"))
@@ -96,18 +96,21 @@ shading_k <- function(observed = NULL, residuals = NULL, expected = NULL,
 class(shading_k) <- "grapcon_generator"
 
 # applied to ggplot2
-myGgTheme <- theme(plot.title = element_text(colour = myPalNeut[3], size = 10)
-                   , axis.title = element_text(colour = myPalNeut[3], size = 10)
-                   , axis.text = element_text(colour = myPalNeut[3], size = 7)
+myGgTheme <- theme(plot.title = element_text(colour = myPalNeut[7], size = 10)
+                   , axis.title = element_text(colour = myPalNeut[7], size = 10)
+                   , axis.text = element_text(colour = myPalNeut[7], size = 7)
                    , axis.title.y = element_text(margin = margin(t = 0, r = 15, b = 0, l = 0))
-                   , axis.line = element_line(colour = myPalNeut[3], size = 0.5)
-                   , axis.ticks = element_line(colour = myPalNeut[3], size = 0.5)
+                   , axis.line = element_line(colour = myPalNeut[7], size = 0.5)
+                   , axis.ticks = element_line(colour = myPalNeut[7], size = 0.5)
                    , panel.background = element_blank()
                    , panel.border = element_blank()
-                   , legend.title = element_text(colour = myPalNeut[3])
-                   , legend.text = element_text(colour = myPalNeut[3])
+                   , legend.title = element_text(colour = myPalNeut[7])
+                   , legend.text = element_text(colour = myPalNeut[7])
                    , panel.grid.major = element_blank()
                    , panel.grid.minor = element_blank()
+                   , legend.background = element_blank()
+                   , legend.box.background = element_blank()
+                   , legend.key = element_blank()
 )
 
 myGgFillScale <- scale_fill_manual(values = c(myPalBrand[8], myPalBrand[2]))
