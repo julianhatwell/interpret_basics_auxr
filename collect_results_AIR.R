@@ -2,6 +2,7 @@ library(dplyr)
 library(tidyr)
 library(PMCMRplus)
 library(cowplot)
+library(rlang)
 options(max.print=20*72)
 algorithms <- c("Anchors", "BRL", "CHIRPS", "defragTrees", "inTrees")
 
@@ -202,10 +203,6 @@ for (i in seq_along(resfilesdirs)) {
           results <- results %>%
             mutate(proxy_performance = NA)
         }
-        # if (!any(grepl("sd_proxy_performance", names(results)))) { # no med rc column
-        #   results <- results %>%
-        #     mutate(median_rule_cascade = NA)
-        # }
         results <- results %>%
           dplyr::select(X, dataset_name, algorithm, n_instances, n_rules, n_rules_used
                         , median_rule_cascade, mean_rule_cascade, sd_rule_cascade
@@ -378,31 +375,6 @@ round(st_err, 4)
 get_mean_ranks_of(meas)
 post_hoc_ztest(meas)
 
-get_lwrq_of(meas) / test_set_size
-get_median_of(meas) / test_set_size
-get_uprq_of(meas) / test_set_size
-
-get_lwrq_of("stability.tt.")
-get_median_of("stability.tt.")
-get_uprq_of("stability.tt.")
-
-get_meds_for_plotting <- function(meas, div = 1, select_algos = algorithms) {
-  
-  meds <- as.data.frame(get_median_of(meas)[, select_algos] / div)
-  meds$dataset <- rownames(meds)
-  meds <- gather(meds, algorithm, m, -dataset)
-  lwrqs <- as.data.frame(get_lwrq_of(meas) / div)[, select_algos]
-  lwrqs$dataset <- rownames(lwrqs)
-  lwrqs <- gather(lwrqs, algorithm, lwr, -dataset)
-  uprqs <- as.data.frame(get_uprq_of(meas) / div)[, select_algos]
-  uprqs$dataset <- rownames(uprqs)
-  uprqs <- gather(uprqs, algorithm, upr, -dataset)
-  meds$lwr <- lwrqs$lwr
-  meds$upr <- uprqs$upr
-  return(meds)
-  
-}
-
 get_means_for_plotting <- function(meas, div = 1, select_algos = algorithms) {
   
   means <- as.data.frame(get_mean_of(meas) / div)[, select_algos]
@@ -426,28 +398,41 @@ blus <- k.grad.blue.rev(2)
 grns <- k.grad.green.rev(2)
 prps <- k.grad.purple.rev(2)
 
-myPal <- c(reds[2], ongs[2], blus[2], grns[2], k.pink)
-myAlph <- c(0.3, 0.3, 1, 0.3, 0.3)
+myPal1 <- c(reds[1], ongs[1], blus[2], grns[1], prps[1])
+myPal2 <- myPal1
+myPal2 <- paste(myPal2, c(rep("55", 2), "", rep("55", 2)), sep = "")
+myAlph1 <- c(0.5, 0.5, 1, 0.5, 0.5)
+myAlphFixed <- c(rep(0.25, 18), rep(0.75, 9), rep(0.25, 18))
 myShap <- c(1, 2, 15, 5, 6)
-names(myPal) <- algorithms
-names(myAlph) <- algorithms
+names(myPal1) <- algorithms
+names(myPal2) <- algorithms
+names(myAlph1) <- algorithms
 names(myShap) <- algorithms
-colos <- scale_colour_manual(
-  values = myPal)
-alpas <- scale_alpha_manual(values = myAlph)
+names(myAlphFixed) <- rep(algorithms, each = 9)
+colos1 <- scale_colour_manual(
+  values = myPal1)
+colos2 <- scale_colour_manual(
+  values = myPal2) # with alpha built in
+alpas <- scale_alpha_manual(values = myAlph1)
 shaps <- scale_shape_manual(values = myShap)
 sens_colos_silent <- scale_colour_manual(values = c(k.purple, k.pink, k.brightblue)
                                          , guide = FALSE)
 sens_colos <- scale_colour_manual(values = c(k.purple, k.pink, k.brightblue))
 
+get_ylabel <- function(y) {
+  ylabel <- gsub("cc", "coverage of target class"
+                 , gsub("wx", "exclusive "
+                        , gsub("_", " "
+                               , gsub(".tt.", "", y))))
+}
+
 get_main_plot <- function(meas
                           , sc_y = scale_y_continuous()
                           , div = 1
                           , select_algos = algorithms) {
-  ylabel <- gsub("cc", "coverage of target class"
-                 , gsub("wx", "exclusive "
-                        , gsub("_", " "
-                               , gsub(".tt.", "", meas))))
+  myGeomPoint <- geom_point(size = 1.5)
+  myGeomErrorBar <- geom_errorbar(width = 0.25)
+  myGeomLine <- geom_line(size = 0.25, alpha = myAlphFixed[names(myAlphFixed) %in% select_algos])
   ggplot(data = get_means_for_plotting(meas, div, select_algos)
          , aes(y = m
                , ymin = lwr
@@ -458,52 +443,49 @@ get_main_plot <- function(meas
                , alpha = algorithm
                , shape = algorithm)) +
     myGgTheme +
-    geom_line() +
-    geom_point(size = 0.8) +
-    geom_errorbar(width = 0.2) +
-    colos + 
+    myGeomLine +
+    myGeomPoint +
+    myGeomErrorBar +
+    colos1 + 
     alpas +
     shaps +
     sc_y +
     scale_x_discrete(labels = get_datasetname_stems(datasetnames)) +
-    ylab(ylabel) +
+    ylab(get_ylabel(meas)) +
     xlab("data set")
 }
+get_main_plot("stability.tt.", scale_y_continuous(limits = c(0.0, 1.0)))
 
-get_med_plot <- function(meas
-                         , sc_y = scale_y_continuous()
-                         , div = 1
-                         , select_algos = algorithms) {
-  ylabel <- gsub("cc", "coverage of target class"
-                 , gsub("wx", "exclusive "
-                        , gsub("_", " "
-                               , gsub(".tt.", "", meas))))
-  ggplot(data = get_meds_for_plotting(meas, div, select_algos)
-         , aes(y = m
-               , ymin = lwr
-               , ymax = upr
-               , x = dataset
-               , colour = algorithm
-               , group = algorithm
-               , alpha = algorithm
-               , shape = algorithm)) +
+get_main_boxplot <- function(meas
+                             , sc_y = scale_y_continuous()) {
+
+  ggplot(data = dplyr::select(comp_results, instance_id, dataset, !! enquo(meas), algorithm) %>%
+           mutate(dataset = get_datasetname_stems(dataset))
+         , aes(y = !!enquo(meas)
+               , colour = algorithm)) +
+    geom_boxplot(outlier.alpha = 0.1
+                 , position = position_dodge2(width = 2
+                                              , padding = 0.2)
+                 ) +
+    colos2 +
+    facet_wrap(dataset~.) +
+    scale_x_continuous(labels = "CHIRPS"
+                       , breaks = 0) +
+    sc_y +
     myGgTheme +
-    geom_line() +
-    geom_point(size = 0.8) +
-    geom_errorbar(width = 0.2) +
-    colos + 
-    alpas +
-    shaps +
-    sc_y +
-    scale_x_discrete(labels = get_datasetname_stems(datasetnames)) +
-    ylab(ylabel) +
-    xlab("data set")
+    theme(legend.position = "bottom"
+          , legend.title = element_blank()
+          , strip.text = element_text(size = 8
+                                      , margin = margin(1,0,1,0, "pt"))
+          ) +
+    ylab(get_ylabel(as_label(enquo(meas))))
+  
 }
+get_main_boxplot(stability.tt.)
+get_main_boxplot(wxcoverage.tt.
+                 , sc_y = scale_y_continuous(limits = c(0.0, 1.0)))
 
-get_med_plot("cc.tt."
-             , sc_y = scale_y_continuous(limits = c(0.0, 1.0))
-             , div = test_set_size
-             , select_algos = c("Anchors", "CHIRPS"))
+
 
 tikz(file = "cc.tikz", width = 6.85, height = 2)
 get_main_plot("cc.tt."
@@ -532,6 +514,14 @@ tikz(file = "etime.tikz", width = 6.85, height = 2)
 get_main_plot("elapsed_time", scale_y_log10())
 dev.off()
 
+tikz(file = "stabbox.tikz", width = 6.85, height = 3)
+get_main_boxplot(stability.tt.)
+dev.off()
+tikz(file = "xcovbox.tikz", width = 6.85, height = 3)
+get_main_boxplot(wxcoverage.tt.
+                 , sc_y = scale_y_continuous(limits = c(0.0, 1.0)))
+dev.off()
+
 # sensitivity plots
 best_sens <- lapply(rownames(datasets_master), function(ds) {
   sens <- get_sensitivity("stability.tr.")
@@ -556,7 +546,7 @@ for (ds in rownames(datasets_master)) {
                , colour = func
                , size = support)) +
     geom_point() +
-    geom_errorbar(size=0.5, width=1) +
+    geom_errorbar(size=0.255, width=1) +
     geom_segment(x = tr_top_mean
                  , xend = tr_top_mean
                  , y = arrowbase
@@ -566,7 +556,7 @@ for (ds in rownames(datasets_master)) {
                  , size = 0.5) +
     labs(title = get_datasetname_stems(ds)
          , x = NULL, y = NULL) +
-    scale_size_discrete(range = c(0.8, 1.2), guide = FALSE) +
+    scale_size_discrete(range = c(0.7, 1.3), guide = FALSE) +
     scale_shape(guide = FALSE) +
     sens_colos_silent +
     geom_vline(xintercept = c(19, 57)
@@ -592,7 +582,7 @@ legend_plot <- ggplot(data = sens_plotting
                    , size = support)) +
   geom_point() +
   geom_errorbar(size=0.5, width=1) +
-  scale_size_discrete(range = c(0.8, 1.2), labels = c("0.1", "0.2")) +
+  scale_size_discrete(range = c(0.7, 1.3), labels = c("0.1", "0.2")) +
   sens_colos +
   theme(legend.box = "horizontal"
         , legend.key = element_blank())
@@ -602,6 +592,69 @@ grid.newpage()
 tikz(file = "legend_sens.tikz", width = 2.2, height = 1.5)
 grid.draw(lgnd)
 dev.off()
+
+#########
+get_lwrq_of(meas) / test_set_size
+get_median_of(meas) / test_set_size
+get_uprq_of(meas) / test_set_size
+
+get_lwrq_of("stability.tt.")
+get_median_of("stability.tt.")
+get_uprq_of("stability.tt.")
+
+get_meds_for_plotting <- function(meas, div = 1, select_algos = algorithms) {
+  
+  meds <- as.data.frame(get_median_of(meas)[, select_algos] / div)
+  meds$dataset <- rownames(meds)
+  meds <- gather(meds, algorithm, m, -dataset)
+  lwrqs <- as.data.frame(get_lwrq_of(meas) / div)[, select_algos]
+  lwrqs$dataset <- rownames(lwrqs)
+  lwrqs <- gather(lwrqs, algorithm, lwr, -dataset)
+  uprqs <- as.data.frame(get_uprq_of(meas) / div)[, select_algos]
+  uprqs$dataset <- rownames(uprqs)
+  uprqs <- gather(uprqs, algorithm, upr, -dataset)
+  meds$lwr <- lwrqs$lwr
+  meds$upr <- uprqs$upr
+  return(meds)
+  
+}
+
+get_med_plot <- function(meas
+                         , sc_y = scale_y_continuous()
+                         , div = 1
+                         , select_algos = algorithms) {
+  ylabel <- gsub("cc", "coverage of target class"
+                 , gsub("wx", "exclusive "
+                        , gsub("_", " "
+                               , gsub(".tt.", "", meas))))
+  ggplot(data = get_meds_for_plotting(meas, div, select_algos)
+         , aes(y = m
+               , ymin = lwr
+               , ymax = upr
+               , x = dataset
+               , colour = algorithm
+               , group = algorithm
+               , alpha = algorithm
+               , shape = algorithm)) +
+    myGgTheme +
+    myGeomLine +
+    myGeomPoint +
+    myGeomErrorBar +
+    colos + 
+    alpas +
+    shaps +
+    sc_y +
+    scale_x_discrete(labels = get_datasetname_stems(datasetnames)) +
+    ylab(ylabel) +
+    xlab("data set")
+}
+get_med_plot("stability.tt.", scale_y_continuous(limits = c(0.0, 1.0)))
+
+
+get_med_plot("cc.tt."
+             , sc_y = scale_y_continuous(limits = c(0.0, 1.0))
+             , div = test_set_size
+             , select_algos = c("Anchors", "CHIRPS"))
 
 
 meas <- "stability.tt."
