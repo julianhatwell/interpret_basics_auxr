@@ -7,10 +7,10 @@ options(max.print=20*72)
 algorithms <- c("Anchors", "BRL", "CHIRPS", "defragTrees", "inTrees")
 
 # setup
-if (grep("linux", Sys.getenv()[['R_LIBS_USER']])) {
+if (grepl("linux", Sys.getenv()[['R_LIBS_USER']])) {
   pathsep <- "/"
 } else {
-  "\\"
+  pathsep <- "\\"
 }
 
 # data management
