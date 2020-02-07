@@ -6,16 +6,16 @@ library(PMCMRplus)
 library(rlang)
 source("data_files_mgmt_bmc.R")
 
-BMCdir <- "BMC2" # "BMC2"
-BMCsensdir <- "ada2_sensitivity" # "ada2_sensitivity"
+BMCdir <- "BMC" # "BMC2"
+BMCsensdir <- "ada1_sensitivity" # "ada2_sensitivity"
 
 resfilesdirs <- paste0(project_dir, BMCdir, pathsep, datasetnames, pathsep)
 sensdirs <- paste0(resfilesdirs, BMCsensdir, pathsep)
 
-selector <- 5:6
+# selector <- 5:6
 
 # sensitivity analysis
-sensdirs <- sensdirs[selector] # temporary
+# sensdirs <- sensdirs[selector] # temporary
 first_pass <- TRUE
 for (i in seq_along(sensdirs)) {
   
@@ -70,7 +70,7 @@ for (i in seq_along(sensdirs)) {
   }
 }
 
-datasets_master <- datasets_master[selector, ]
+# datasets_master <- datasets_master[selector, ]
 
 sens_results <- main_results %>% mutate(
   dataset_name = factor(dataset_name)
@@ -145,7 +145,7 @@ get_best_sens(stability_tr)
 
 # comparative analysis
 source("data_files_mgmt_bmc.R")
-BMCdir <- "BMC2" # "BMC2"
+BMCdir <- "BMC" # "BMC2"
 
 resfilesdirs <- paste0(project_dir, BMCdir, pathsep, datasetnames, pathsep)
 
@@ -340,6 +340,24 @@ get_wilcox_tests <- function(meas) {
   }
 }
 
+get_sign_tests <- function(meas) {
+  qmeas <- quo(meas)
+  cres <- dplyr::select(comp_results, instance_id, dataset, !! qmeas, algorithm) %>%
+    group_by(dataset) %>%
+    spread(algorithm, !! qmeas)
+  
+  for (ds in datasetnames[c(5:9)]) {
+    wcox <- cres %>% filter(dataset == ds) %>% ungroup() %>%
+      dplyr::select(-instance_id, -dataset)
+    sgn <- sign(wcox[[algorithms[1]]] - wcox[[algorithms[2]]])
+    s <- c(sum(sgn == 1, na.rm = TRUE), sum(sgn == -1, na.rm = TRUE))
+    t <- sum(sgn != 0, na.rm = TRUE)
+    wxtest <- binom.test(s, t)
+    print(ds)
+    print(wxtest)
+  }
+}
+
 get_t_tests <- function(meas) {
   qmeas <- quo(meas)
   cres <- dplyr::select(comp_results, instance_id, dataset, !! qmeas, algorithm) %>%
@@ -512,10 +530,23 @@ round(st_err, 4)[, c(2, 1, 3)]
 get_mean_ranks_of(meas)[, c(1, 3, 2, 4)]
 post_hoc_ztest(meas)
 get_wilcox_tests(meas)
-tikz(file = paste0(BMCdir, pathsep, "meancov.tikz"), width = 6.85, height = 3)
+get_sign_tests(meas)
+# tikz(file = paste0(BMCdir, pathsep, "meancov.tikz"), width = 6.85, height = 3)
+pdf(file = paste0(BMCdir, pathsep, "meancov.pdf")
+    , width = 6.85, height = 3
+    , compress = FALSE
+    , title = NULL
+    , colormodel = "cmyk")
+png(file = paste0(BMCdir, pathsep, "meancov.png")
+    , width = 6.85, height = 3, units = "in", res = 1800)
 get_main_plot("coverage.tt.", scale_y_continuous(limits = c(0.0, 1.0)))
 dev.off()
-tikz(file = paste0(BMCdir, pathsep, "covbox.tikz"), width = 6.85, height = 3)
+# tikz(file = paste0(BMCdir, pathsep, "covbox.tikz"), width = 6.85, height = 3)
+pdf(file = paste0(BMCdir, pathsep, "covbox.pdf")
+    , width = 6.85, height = 3
+    , compress = FALSE
+    , title = NULL
+    , colormodel = "cmyk")
 get_main_boxplot(coverage.tt.
                  , oa = 0.3
                  , sc_y = scale_y_continuous(limits = c(0.0, 1.0)))
@@ -528,13 +559,24 @@ round(st_err, 4)[, c(2, 1, 3)]
 get_mean_ranks_of(meas)[, c(1, 3, 2, 4)]
 get_t_tests(meas)
 get_wilcox_tests(meas)
+get_sign_tests(meas)
 get_friedman_tests(meas)
 post_hoc_ztest(meas)
 get_zeros_count(meas)[, c(2,1,3)]
-tikz(file = paste0(BMCdir, pathsep, "meanprec.tikz"), width = 6.85, height = 3)
+# tikz(file = paste0(BMCdir, pathsep, "meanprec.tikz"), width = 6.85, height = 3)
+pdf(file = paste0(BMCdir, pathsep, "meanprec.pdf")
+    , width = 6.85, height = 3
+    , compress = FALSE
+    , title = NULL
+    , colormodel = "cmyk")
 get_main_plot("precision.tt.", scale_y_continuous(limits = c(0.0, 1.0)))
 dev.off()
-tikz(file = paste0(BMCdir, pathsep, "precbox.tikz"), width = 6.85, height = 3)
+# tikz(file = paste0(BMCdir, pathsep, "precbox.tikz"), width = 6.85, height = 3)
+pdf(file = paste0(BMCdir, pathsep, "precbox.pdf")
+    , width = 6.85, height = 3
+    , compress = FALSE
+    , title = NULL
+    , colormodel = "cmyk")
 get_main_boxplot(precision.tt., oa = 0.3)
 dev.off()
 
@@ -547,10 +589,20 @@ post_hoc_ztest(meas)
 get_wilcox_tests(meas)
 get_t_tests(meas)
 get_friedman_tests(meas)
-tikz(file = paste0(BMCdir, pathsep, "meanstab.tikz"), width = 6.85, height = 3)
+# tikz(file = paste0(BMCdir, pathsep, "meanstab.tikz"), width = 6.85, height = 3)
+pdf(file = paste0(BMCdir, pathsep, "meanstab.pdf")
+    , width = 6.85, height = 3
+    , compress = FALSE
+    , title = NULL
+    , colormodel = "cmyk")
 get_main_plot("stability.tt.", scale_y_continuous(limits = c(0.0, 1.0)))
 dev.off()
-tikz(file = paste0(BMCdir, pathsep, "stabbox.tikz"), width = 6.85, height = 3)
+# tikz(file = paste0(BMCdir, pathsep, "stabbox.tikz"), width = 6.85, height = 3)
+pdf(file = paste0(BMCdir, pathsep, "stabbox.pdf")
+    , width = 6.85, height = 3
+    , compress = FALSE
+    , title = NULL
+    , colormodel = "cmyk")
 get_main_boxplot(stability.tt.)
 dev.off()
 
@@ -576,10 +628,20 @@ round(get_mean_of(meas), 4)
 round(st_err, 4)
 get_mean_ranks_of(meas)
 post_hoc_ztest(meas)
-tikz(file = paste0(BMCdir, pathsep, "meantime.tikz"), width = 6.85, height = 3)
+# tikz(file = paste0(BMCdir, pathsep, "meantime.tikz"), width = 6.85, height = 3)
+pdf(file = paste0(BMCdir, pathsep, "meantime.pdf")
+    , width = 6.85, height = 3
+    , compress = FALSE
+    , title = NULL
+    , colormodel = "cmyk")
 get_main_plot("elapsed_time", scale_y_continuous(trans = "log10"))
 dev.off()
-tikz(file = paste0(BMCdir, pathsep, "timebox.tikz"), width = 6.85, height = 3)
+# tikz(file = paste0(BMCdir, pathsep, "timebox.tikz"), width = 6.85, height = 3)
+pdf(file = paste0(BMCdir, pathsep, "timebox.pdf")
+    , width = 6.85, height = 3
+    , compress = FALSE
+    , title = NULL
+    , colormodel = "cmyk")
 get_main_boxplot(elapsed_time, oa = 0.5
                  , sc_y = scale_y_continuous(trans = "log10"))
 
@@ -591,7 +653,12 @@ round(get_mean_of(meas), 4)
 round(st_err, 4)
 get_mean_ranks_of(meas)
 post_hoc_ztest(meas)
-tikz(file = paste0(BMCdir, pathsep, "rllnbox.tikz"), width = 6.85, height = 3)
+# tikz(file = paste0(BMCdir, pathsep, "rllnbox.tikz"), width = 6.85, height = 3)
+pdf(file = paste0(BMCdir, pathsep, "rllnbox.pdf")
+    , width = 6.85, height = 3
+    , compress = FALSE
+    , title = NULL
+    , colormodel = "cmyk")
 get_main_boxplot(elapsed_time, oa = 0.5
                  , sc_y = scale_y_log10())
 dev.off()
