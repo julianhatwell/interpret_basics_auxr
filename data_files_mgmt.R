@@ -7,7 +7,7 @@ data_dir <- "~/Documents/github/explain_te/CHIRPS/datafiles/"
 # project_dir <- "V:\\whiteboxing\\tests\\"
 # project_dir <- "V:\\whiteboxing\\"
 # project_dir <- "C:\\Users\\Crutt\\Documents\\whiteboxing\\tests\\"
-project_dir <- "/datadisk/whiteboxing/benchmarks/"
+project_dir <- "/datadisk/whiteboxing/2020/"
 
 datasetnames <- c("adult"
                   , "bankmark"
@@ -55,14 +55,11 @@ get_data_files <- function(x = NA) {
 
 data_files <- get_data_files()
 
-get_datasetname_stems <- function(x) {
-  sub("_samp", "", sub("_small|_tiny", "", x))
-}
-
 get_measure_stem <- function(x) {
   paste("mean", sub("wx", "exc. ", sub(".tt.|.tr.", "", measure)))
 }
 
-#   resfilesdirs <- paste0(project_dir, datasetnames, "\\")
-resfilesdirs <- paste0(project_dir, datasetnames, "/")
-
+train_set_size <- integer(nrow(datasets_master))
+test_set_size <- integer(nrow(datasets_master))
+names(train_set_size) <- rownames(datasets_master)
+names(test_set_size) <- rownames(datasets_master)

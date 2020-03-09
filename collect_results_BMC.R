@@ -70,8 +70,6 @@ for (i in seq_along(sensdirs)) {
   }
 }
 
-# datasets_master <- datasets_master[selector, ]
-
 sens_results <- main_results %>% mutate(
   dataset_name = factor(dataset_name)
   , true.class = factor(true.class)

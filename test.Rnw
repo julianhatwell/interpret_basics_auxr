@@ -1,0 +1,96 @@
+\documentclass{article}
+
+\begin{document}
+
+
+
+
+
+\begin{table}\centering
+\caption{Each explanation was generated from one held out instance and the precision measured on the remaining held out data. The mean $\pm$ standard errors are shown. }
+\begin{tabular}{|c|ccccc|}
+\hline \\[-1.8ex]
+ & Anchors & BRL & CHIRPS & defragTrees & inTrees \\
+\hline \\[-1.8ex]
+adult & $0.9530 \pm 0.0052$ & $0.7063 \pm 0.0100$ & $\mathbf{0.9850 \pm 0.0009}$ & $0.8949 \pm 0.0076$ & $0.7628 \pm 0.0092$ \\
+bank & $0.9457 \pm 0.0052$ & $0.4247 \pm 0.0138$ & $0.9837 \pm 0.0018$ & $\mathbf{0.9841 \pm 0.0035}$ & $0.8754 \pm 0.0079$ \\
+car & $0.9575 \pm 0.0089$ & $0.7904 \pm 0.0139$ & $\mathbf{0.9934 \pm 0.0011}$ & $0.5837 \pm 0.0168$ & $0.9638 \pm 0.0048$ \\
+cardio & $0.9419 \pm 0.0085$ & $0.5971 \pm 0.0122$ & $\mathbf{0.9687 \pm 0.0034}$ & $0.7031 \pm 0.0143$ & $0.8196 \pm 0.0104$ \\
+credit & $0.9805 \pm 0.0084$ & $0.5988 \pm 0.0188$ & $\mathbf{0.9855 \pm 0.0027}$ & $0.5225 \pm 0.0152$ & $0.7226 \pm 0.0203$ \\
+german & $0.8373 \pm 0.0207$ & $0.6250 \pm 0.0190$ & $\mathbf{0.9054 \pm 0.0094}$ & $0.6341 \pm 0.0186$ & $0.6557 \pm 0.0162$ \\
+lending & $0.9732 \pm 0.0063$ & N/A & $\mathbf{0.9801 \pm 0.0017}$ & $0.7259 \pm 0.0124$ & N/A \\
+nursery & $0.9662 \pm 0.0055$ & $0.8759 \pm 0.0091$ & $\mathbf{0.9934 \pm 0.0011}$ & $0.5693 \pm 0.0124$ & $0.8259 \pm 0.0084$ \\
+rcdv & $0.8332 \pm 0.0097$ & $0.2100 \pm 0.0093$ & $\mathbf{0.9320 \pm 0.0036}$ & $0.7484 \pm 0.0095$ & $0.5436 \pm 0.0082$ \\
+\hline
+\end{tabular}
+\label{precmeans}
+\end{table}
+
+
+
+
+
+\begin{table}\centering
+\caption{Each explanation was generated from one held out instance and the stability measured on the remaining held out data. The mean $\pm$ standard errors are shown.}
+\begin{tabular}{|c|ccccc|}
+\hline \\[-1.8ex]
+ & Anchors & BRL & CHIRPS & defragTrees & inTrees \\
+\hline \\[-1.8ex]
+adult & $0.9253 \pm 0.0045$ & $0.6677 \pm 0.0090$ & $\mathbf{0.9821 \pm 0.0011}$ & $0.8946 \pm 0.0076$ & $0.7625 \pm 0.0092$ \\
+bank & $0.9495 \pm 0.0093$ & $0.5801 \pm 0.0093$ & $0.9817 \pm 0.0019$ & $\mathbf{0.9832 \pm 0.0035}$ & $0.8750 \pm 0.0079$ \\
+car & $0.8806 \pm 0.0075$ & $0.7674 \pm 0.0134$ & $\mathbf{0.9653 \pm 0.0016}$ & $0.5779 \pm 0.0166$ & $0.9356 \pm 0.0047$ \\
+cardio & $0.8626 \pm 0.0072$ & $0.5871 \pm 0.0111$ & $\mathbf{0.9451 \pm 0.0042}$ & $0.6867 \pm 0.0140$ & $0.7999 \pm 0.0103$ \\
+credit & $0.9405 \pm 0.0070$ & $0.5853 \pm 0.0179$ & $\mathbf{0.9580 \pm 0.0028}$ & $0.5006 \pm 0.0135$ & $0.6858 \pm 0.0192$ \\
+german & $0.7926 \pm 0.0133$ & $0.6164 \pm 0.0186$ & $\mathbf{0.8709 \pm 0.0094}$ & $0.6305 \pm 0.0185$ & $0.6132 \pm 0.0150$ \\
+lending & $0.9347 \pm 0.0051$ & N/A & $\mathbf{0.9699 \pm 0.0020}$ & $0.7203 \pm 0.0123$ & N/A \\
+nursery & $0.8777 \pm 0.0062$ & $0.8494 \pm 0.0089$ & $\mathbf{0.9594 \pm 0.0022}$ & $0.5674 \pm 0.0123$ & $0.8206 \pm 0.0084$ \\
+rcdv & $0.7926 \pm 0.0066$ & $0.3913 \pm 0.0062$ & $\mathbf{0.9098 \pm 0.0037}$ & $0.7465 \pm 0.0095$ & $0.5430 \pm 0.0082$ \\
+\hline
+\end{tabular}
+\label{precmeans}
+\end{table}
+
+
+
+\begin{table}\centering
+\caption{Each explanation was generated from one held out instance and the coverage measured on the remaining held out data. This was repeated for entire held out data, or one thousand instances (whichever was the smaller). The mean $\pm$ standard errors are shown.}
+\begin{tabular}{|c|ccccc|}
+\hline \\[-1.8ex]
+ & Anchors & BRL & CHIRPS & defragTrees & inTrees \\
+\hline \\[-1.8ex]
+adult & $0.1613 \pm 0.0047$ & $0.2022 \pm 0.0101$ & $0.2659 \pm 0.0050$ & $0.4149 \pm 0.0052$ & $0.3823 \pm 0.0048$ \\
+bank & $0.2918 \pm 0.0056$ & $0.4586 \pm 0.0157$ & $0.5275 \pm 0.0057$ & $0.2609 \pm 0.0032$ & $0.3444 \pm 0.0042$ \\
+car & $0.2036 \pm 0.0071$ & $0.3843 \pm 0.0148$ & $0.2322 \pm 0.0057$ & $0.3584 \pm 0.0039$ & $0.1878 \pm 0.0036$ \\
+cardio & $0.0866 \pm 0.0030$ & $0.6890 \pm 0.0188$ & $0.4765 \pm 0.0088$ & $0.1963 \pm 0.0021$ & $0.2685 \pm 0.0062$ \\
+credit & $0.3212 \pm 0.0099$ & $0.6079 \pm 0.0252$ & $0.3656 \pm 0.0064$ & $0.8159 \pm 0.0172$ & $0.1789 \pm 0.0055$ \\
+german & $0.1568 \pm 0.0092$ & $0.6579 \pm 0.0213$ & $0.2045 \pm 0.0059$ & $1.0000 \pm 0.0000$ & $0.1154 \pm 0.0049$ \\
+lending & $0.1764 \pm 0.0042$ & N/A & $0.5380 \pm 0.0087$ & $0.4799 \pm 0.0059$ & N/A \\
+nursery & $0.1303 \pm 0.0049$ & $0.1502 \pm 0.0059$ & $0.1430 \pm 0.0046$ & $0.2742 \pm 0.0021$ & $0.2798 \pm 0.0028$ \\
+rcdv & $0.0237 \pm 0.0009$ & $0.3480 \pm 0.0151$ & $0.0312 \pm 0.0011$ & $0.2173 \pm 0.0038$ & $0.2631 \pm 0.0023$ \\
+\hline
+\end{tabular}
+\label{precmeans}
+\end{table}
+
+
+\begin{table}\centering
+\caption{Each explanation was generated from one held out instance and the exclusive coverage measured on the remaining held out data. This was repeated for entire held out data, or one thousand instances (whichever was the smaller). The mean $\pm$ standard errors are shown.}
+\begin{tabular}{|c|ccccc|}
+\hline \\[-1.8ex]
+ & Anchors & BRL & CHIRPS & defragTrees & inTrees \\
+\hline \\[-1.8ex]
+adult & $0.1556 \pm 0.0045$ & $0.0618 \pm 0.0025$ & $0.2600 \pm 0.0048$ & $0.3873 \pm 0.0049$ & $0.3196 \pm 0.0051$ \\
+bank & $0.2387 \pm 0.0033$ & $0.0006 \pm 0.0001$ & $0.4973 \pm 0.0050$ & $0.2609 \pm 0.0032$ & $0.3106 \pm 0.0039$ \\
+car & $0.2028 \pm 0.0071$ & $0.1720 \pm 0.0060$ & $0.2309 \pm 0.0057$ & $0.2409 \pm 0.0026$ & $0.1860 \pm 0.0035$ \\
+cardio & $0.0851 \pm 0.0029$ & $0.0097 \pm 0.0007$ & $0.4620 \pm 0.0085$ & $0.1777 \pm 0.0023$ & $0.1777 \pm 0.0023$ \\
+credit & $0.3177 \pm 0.0098$ & $0.1342 \pm 0.0087$ & $0.3584 \pm 0.0063$ & $0.0979 \pm 0.0053$ & $0.1688 \pm 0.0050$ \\
+german & $0.1534 \pm 0.0090$ & $0.1099 \pm 0.0069$ & $0.1962 \pm 0.0055$ & $0.0000 \pm 0.0000$ & $0.1031 \pm 0.0039$ \\
+lending & $0.1757 \pm 0.0042$ & N/A & $0.5215 \pm 0.0082$ & $0.2789 \pm 0.0045$ & N/A \\
+nursery & $0.1302 \pm 0.0049$ & $0.1332 \pm 0.0048$ & $0.1429 \pm 0.0046$ & $0.2492 \pm 0.0023$ & $0.2675 \pm 0.0027$ \\
+rcdv & $0.0233 \pm 0.0009$ & $0.0001 \pm 0.0000$ & $0.0307 \pm 0.0010$ & $0.1623 \pm 0.0023$ & $0.1967 \pm 0.0016$ \\
+\hline
+\end{tabular}
+\label{precmeans}
+\end{table}
+
+\end{document}

@@ -1,3 +1,5 @@
+rm(list=ls())
+
 library(dplyr)
 library(tidyr)
 library(PMCMRplus)
@@ -25,12 +27,12 @@ datasets_master$difficulty <- c("large"
                               , "small"
                               ,"large")
 
-sensdirs <- paste0(resfilesdirs, "rf_sensitivity", pathsep)
+maindir <- "GBM"
+sensdir <- "sensitivity"
 
-train_set_size <- integer(nrow(datasets_master))
-test_set_size <- integer(nrow(datasets_master))
-names(train_set_size) <- rownames(datasets_master)
-names(test_set_size) <- rownames(datasets_master)
+resfilesdirs <- paste0(project_dir, maindir, pathsep, datasetnames, pathsep)
+sensdirs <- paste0(resfilesdirs, sensdir, pathsep)
+sensdirs <- paste0(resfilesdirs, "rf_sensitivity", pathsep)
 
 # sensitivity analysis
 first_pass <- TRUE
@@ -41,32 +43,40 @@ for (i in seq_along(sensdirs)) {
   for (filename in filenames) {
     
     if (!grepl("summary", filename)) {
-      supp <- gregexpr("sp\\_0.[0-9]{1,2}", filename)
+      wcts <- gregexpr("wcts\\_(conf\\_weighted|majority|targetclass|signdelta)", filename)
+      wcts <- regmatches(filename, wcts)[[1]]
+      wcts <- substr(gsub("wcts\\_", "", wcts), 1, 3)
+      supp <- gregexpr("sp\\_0.[0-9]{1,3}", filename)
       supp <- regmatches(filename, supp)[[1]]
       supp <- as.numeric(gsub("sp\\_", "", supp))
-      alpp <- gregexpr("ap\\_0.[1-9]", filename)
+      alpp <- gregexpr("ap\\_0.[0-9]", filename)
       alpp <- regmatches(filename, alpp)[[1]]
       alpp <- as.numeric(gsub("ap\\_", "", alpp))
       dpb <- gregexpr("dpb\\_[1-9]{1,2}", filename)
       dpb <- regmatches(filename, dpb)[[1]]
       dpb <- as.numeric(gsub("dpb\\_", "", dpb))
+      dpeq <- gregexpr("dpeq\\_(True|False)", filename)
+      dpeq <- regmatches(filename, dpeq)[[1]]
+      dpeq <- as.logical(toupper(gsub("dpeq\\_", "", dpeq)))
       sf <- gregexpr("sf\\_[1-9]", filename)
       sf <- regmatches(filename, sf)[[1]]
       sf <- as.numeric(gsub("sf\\_", "", sf))
-      wht <- gregexpr("w\\_(kldiv|nothing|lodds)", filename)
+      wht <- gregexpr("w\\_(kldiv|nothing|chisq)", filename)
       wht <- regmatches(filename, wht)[[1]]
       wht <- gsub("w\\_", "", wht)
       
       results <- read.csv(paste0(sensdirs[i], filename), stringsAsFactors = FALSE)
       
       # datasetname <- rep(dsname, nrow(results))
+      wcts <- rep(wcts, nrow(results))
       support <- rep(supp, nrow(results))
       alpha_paths <- rep(alpp, nrow(results))
       disc_path_bins <- rep(dpb, nrow(results))
+      disc_path_eqcounts <- rep(dpeq, nrow(results))
       score_func <- rep(sf, nrow(results))
       weighting <- rep(wht, nrow(results))
       
-      results <- cbind(results, as.data.frame(cbind(support, alpha_paths, disc_path_bins, score_func, weighting), stringsAsFactors = FALSE))
+      results <- cbind(results, as.data.frame(cbind(wcts, support, alpha_paths, disc_path_bins, disc_path_eqcounts, score_func, weighting), stringsAsFactors = FALSE))
       if (first_pass) {
         main_results <- results
         first_pass <- FALSE
@@ -74,7 +84,7 @@ for (i in seq_along(sensdirs)) {
         main_results <- rbind(main_results, results)
       }
     } else { # summary
-
+      
     }
   }
 }
@@ -87,7 +97,8 @@ sens_results <- main_results %>% mutate(
   , predicted.class.label = factor(predicted.class.label)
   , target.class = factor(target.class)
   , target.class.label = factor(target.class.label)
-  , support = factor(ifelse(ifelse(datasets_master[dataset_name, "difficulty"] == "large", as.numeric(support) - 0.1, as.numeric(support)) == 0.1, "A", "B"))
+  , wcts = factor(wcts)
+  , support = factor(support)
   , weighting = factor(weighting)
   , score_func = factor(score_func)
   , wxcoverage.tr. = xcoverage.tr. * (nci.tr./(ci.tr. + nci.tr.))
@@ -96,9 +107,11 @@ sens_results <- main_results %>% mutate(
 
 # get the listing of all the sensitivity analyses by grid
 sens_groups <- with(sens_results, expand.grid(
-  support = unique(support)
+  wcts = unique(wcts)
+  , support = unique(support)
   , alpha = unique(alpha_paths)
   , bins = unique(disc_path_bins)
+  , eqcounts = unique(disc_path_eqcounts)
   , func = unique(score_func)
   , weights = unique(weighting)))
 # provide id numbers
@@ -109,9 +122,10 @@ get_sensitivity <- function(measure) {
   for (ds in rownames(datasets_master)) {
     sv <- filter(sens_results, dataset_name == ds)
     # order must be same as sens_groups above
-    sens_values <- tapply(sv[[measure]], list(sv$support
-                                              , sv$alpha_paths
+    sens_values <- tapply(sv[[measure]], list(sv$wcts
+                                              , sv$support
                                               , sv$disc_path_bins
+                                              , sv$disc_path_eqcounts
                                               , sv$score_func
                                               , sv$weighting), identity)
     
@@ -145,10 +159,6 @@ get_best_sens <- function(sens) {
 
 stability_tr <- get_sensitivity("stability.tr.")
 get_best_sens(stability_tr)
-
-stability_sens <- get_sensitivity("stability.tt.")
-wxcoverage_sens <- get_sensitivity("wxcoverage.tt.")
-rule.length_sens <- get_sensitivity("rule.length")
 
 # comparative analysis
 patt <- paste0("(", paste(algorithms, collapse = ")|("), ")")
