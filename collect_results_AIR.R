@@ -8,13 +8,6 @@ library(rlang)
 options(max.print=20*72)
 algorithms <- c("Anchors", "BRL", "CHIRPS", "defragTrees", "inTrees")
 
-# setup
-if (grepl("linux", Sys.getenv()[['R_LIBS_USER']])) {
-  pathsep <- "/"
-} else {
-  pathsep <- "\\"
-}
-
 # data management
 source("data_files_mgmt.R")
 datasets_master$difficulty <- c("large"
@@ -27,12 +20,12 @@ datasets_master$difficulty <- c("large"
                               , "small"
                               ,"large")
 
-maindir <- "GBM"
-sensdir <- "sensitivity"
+maindir <- "sens"
+sensdir <- "ada1_sensitivity"
 
 resfilesdirs <- paste0(project_dir, maindir, pathsep, datasetnames, pathsep)
 sensdirs <- paste0(resfilesdirs, sensdir, pathsep)
-sensdirs <- paste0(resfilesdirs, "rf_sensitivity", pathsep)
+# sensdirs <- paste0(resfilesdirs, "rf_sensitivity", pathsep)
 
 # sensitivity analysis
 first_pass <- TRUE

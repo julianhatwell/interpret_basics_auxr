@@ -59,13 +59,22 @@ evaluate <- function(prior_labels, post_idx, classes) {
   prior <- p_count_corrected(prior_labels, classes)
   
   # basic results
-  p_counts = p_count_corrected(prior_labels[post_idx], classes)
-  counts = p_counts[["counts"]]
-  covered <- sum(counts)
-  ci <- covered - counts
-  labels <- p_counts[["labels"]]
-  posterior <- p_counts[["p_counts"]]
-  
+  if (sum(post_idx) == 0) {
+    # no coverage
+    counts <- 0
+    covered <- 0
+    ci <- 0
+    labels <- factor(character(0), levels = classes)
+    posterior <- 0
+  } else {
+    p_counts = p_count_corrected(prior_labels[post_idx], classes)
+    counts = p_counts[["counts"]]
+    covered <- sum(counts)
+    ci <- covered - counts
+    labels <- p_counts[["labels"]]
+    posterior <- p_counts[["p_counts"]]
+  }
+
   # coverage
   coverage <- covered / all_c # tp + fp / tp + fp + tn + fn  
   xcoverage <- (covered + 1) / (all_c + length(classes) + 1)  # tp + fp / tp + fp + tn + fn + current instance, laplace corrected
@@ -123,7 +132,7 @@ evaluate <- function(prior_labels, post_idx, classes) {
               , npv = npv
               , stability = stability
               , prior = prior[["p_counts"]]
-              , posterior = p_counts[["p_counts"]]
+              , posterior = posterior
               , counts = counts
               , labels = labels
               , recall = recall
@@ -148,8 +157,8 @@ data_prep <- function(i, max_tests) {
   classes <<- levels(dat[, class_cols[i]])
   
   # test train split according to indices exported from Python
-  train_idx <<- read.csv(paste0(resfilesdirs[i], "train_index.csv"), header = FALSE)$V1 + 1
-  test_idx <<- read.csv(paste0(resfilesdirs[i], "test_index.csv"), header = FALSE)$V1 + 1
+  train_idx <<- read.csv(paste0(project_dir, datasetnames[i], pathsep, "train_index.csv"), header = FALSE)$V1 + 1
+  test_idx <<- read.csv(paste0(project_dir, datasetnames[i], pathsep, "test_index.csv"), header = FALSE)$V1 + 1
   dat_train <<- dat[train_idx, ]
   dat_test <<- dat[test_idx, ]
   
@@ -164,7 +173,6 @@ data_prep <- function(i, max_tests) {
 }
 
 results_init <<- function(n_test) {
-  forest_vote_share <<- numeric(n_test)
   prior <<- numeric(n_test)
   coverage <<- numeric(n_test)
   xcoverage <<- numeric(n_test)
@@ -239,9 +247,14 @@ penalise_bad_prediction <- function(mc, tc, value) {
   return(ifelse(mc == tc, value, 0))
 }
 
-inTrees_benchmark <- function(forest, ds_container, ntree, maxdepth) {
+inTrees_benchmark <- function(forest, ds_container, ntree, maxdepth, model) {
   begin_time <- Sys.time()
-  treeList <- RF2List(forest) # transform rf object to an inTrees" format
+  if(model != "gbm") {
+    treeList <- RF2List(forest) # transform rf object to an inTrees" format
+  } else {
+    treeList <- GBM2List(forest, ds_container$X_train) # transform rf object to an inTrees" format
+  }
+  
   extract <- extractRules(treeList, ds_container$X_train, ntree = ntree, maxdepth = maxdepth) # R-executable conditions
   ruleMetric <- getRuleMetric(extract, ds_container$X_train, ds_container$y_train) # get rule metrics
   ruleMetric <- pruneRule(ruleMetric, ds_container$X_train, ds_container$y_train)
@@ -437,13 +450,34 @@ sbrl_benchmark <- function(ds_container, classes, lambda, eta, rule_maxlen, ncha
       )
     }
     sbrls[[pc]]$concatenated_rule <- sapply(sbrls[[pc]]$rule_pos, concatenate_rule)
-    sbrls[[pc]]$rl_ln <- sapply(sapply(sbrls[[pc]]$concatenated_rule, function(cr) {
-      unlist(sapply(c(discrete, continuous), function(dc, cr) {
-        if (grepl(dc, cr)) {
-          return(1)
-        }
-      }, cr = cr, USE.NAMES = FALSE))
-    }, USE.NAMES = FALSE), sum)
+    # sbrls[[pc]]$rl_ln <- sapply(sapply(sbrls[[pc]]$concatenated_rule, function(cr) {
+    #   unlist(sapply(c(discrete, continuous), function(dc, cr) {
+    #     if (grepl(dc, cr)) {
+    #       return(1)
+    #     }
+    #   }, cr = cr, USE.NAMES = FALSE))
+    # }, USE.NAMES = FALSE), sum)
+    bangs <- gregexpr("!", sbrls[[pc]]$concatenated_rule)
+    last_bang_pos <- sapply(bangs, function(b) b[length(b)])
+    last_paren_pos <- unlist(sapply(1:length(last_bang_pos)
+                                    , function(b) gregexpr(")"
+                                                           , substr(sbrls[[pc]]$concatenated_rule[b]
+                                                                    , start = last_bang_pos[b][[1]]
+                                                                    , stop = nchar(sbrls[[pc]]$concatenated_rule[b])))))
+    sbrls[[pc]]$rl_ln <- sapply(1:length(last_bang_pos), function(b) {
+      bang <- 0
+      if(bangs[[b]][1] != -1) bang <- length(bangs[[b]])
+      last_pos <- ifelse(last_bang_pos[b] + last_paren_pos[b] <= -1, 0
+                         , last_bang_pos[b] + last_paren_pos[b])
+      and <- 0
+      ands <- unlist(gregexpr("&", substr(sbrls[[pc]]$concatenated_rule[b]
+                                          , start = last_pos
+                                          , stop = nchar(sbrls[[pc]]$concatenated_rule[b]))))
+      if (ands[1] != -1) and <- length(ands)
+      rul_len <- 1
+      if (bang + and > 1) rul_len <- bang + and
+      return(rul_len)
+    })
   }
   
   out <- list(this_i = i
@@ -451,13 +485,13 @@ sbrl_benchmark <- function(ds_container, classes, lambda, eta, rule_maxlen, ncha
               , this_run = length(random_states) * (i - 1) + r
               , random_state = random_states[r]
               , datasetname = datasetnames[i]
-              , model_type="sbrl"
+              , model_type = "sbrl"
               , begin_time = begin_time
               , completion_time = Sys.time())
   
   if (length(class_iter) == 1) { # binary classification
     out$label <- ifelse(sbrls[[pc]]$preds > 0.5, 1, 2)
-    out$model_accurate <- ifelse(out$label == as.numeric(set_labels(ds_container$y_test, pc)), 1, 0)
+    out$model_accurate <- ifelse(out$label == as.numeric(ds_container$y_test), 1, 0)  
     out$rule_idx = sbrls[[pc]]$rule_pos
     out$rl_ln <- sbrls[[pc]]$rl_ln
     out$unique_rules <- length(sbrls[[pc]]$model$rs$V1)

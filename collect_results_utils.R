@@ -4,15 +4,15 @@ library(lattice)
 library(ggplot2)
 
 # main results collection
-folders <- c("adult_small_samp"
-             , "bankmark_samp"
+folders <- c("adult"
+             , "bankmark"
              , "car"
              , "cardio"
              , "credit"
              , "german"
              , "lending_tiny_samp"
-             , "nursery_samp"
-             , "rcdv_samp")
+             , "nursery"
+             , "rcdv")
 
 meths <- c("Anchors", "BRL", "CHIRPS", "defragTrees", "inTrees")
 
@@ -20,7 +20,6 @@ metrics_names <- c("precision.tt.", "stability.tt.", "recall.tt."
                    , "f1.tt.", "accuracy.tt.", "lift.tt."
                    , "coverage.tt.", "xcoverage.tt.", "kl_div.tt.")
 metrics <- sub(".tt.", "", metrics_names)
-
 
 np <- function(fld) {
   return(function(fl) {

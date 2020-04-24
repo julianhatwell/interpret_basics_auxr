@@ -1,3 +1,10 @@
+# setup
+if (grepl("linux", Sys.getenv()[['R_LIBS_USER']])) {
+  pathsep <- "/"
+} else {
+  pathsep <- "\\"
+}
+
 # data settings
 # data_dir <- "C:\\Users\\id126493\\Documents\\GitHub\\explain_te\\CHIRPS\\datafiles\\"
 # data_dir <- "C:\\Users\\Crutt\\Documents\\GitHub\\explain_te\\CHIRPS\\datafiles\\"
@@ -7,7 +14,7 @@ data_dir <- "~/Documents/github/explain_te/CHIRPS/datafiles/"
 # project_dir <- "V:\\whiteboxing\\tests\\"
 # project_dir <- "V:\\whiteboxing\\"
 # project_dir <- "C:\\Users\\Crutt\\Documents\\whiteboxing\\tests\\"
-project_dir <- "/datadisk/whiteboxing/2020/"
+project_dir <- "/datadisk/whiteboxing/2020Ada1/"
 
 datasetnames <- c("adult"
                   , "bankmark"
@@ -43,8 +50,9 @@ class_cols <- c(
 )
 
 positive_classes <- c(">50K", "yes", "acc", NA, "plus", "good", "Fully Paid", NA, "Y")
+negative_classes <- c("<=50K", "no", "unacc", NA, "minus", "bad", "Charged Off", NA, "N")
 
-datasets_master <- data.frame(class_cols, n_classes, positive_classes, stringsAsFactors = FALSE)
+datasets_master <- data.frame(class_cols, n_classes, positive_classes, negative_classes, stringsAsFactors = FALSE)
 
 rownames(datasets_master) <- datasetnames
 
@@ -63,3 +71,4 @@ train_set_size <- integer(nrow(datasets_master))
 test_set_size <- integer(nrow(datasets_master))
 names(train_set_size) <- rownames(datasets_master)
 names(test_set_size) <- rownames(datasets_master)
+
