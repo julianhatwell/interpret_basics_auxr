@@ -14,7 +14,7 @@ data_dir <- "~/Documents/github/explain_te/CHIRPS/datafiles/"
 # project_dir <- "V:\\whiteboxing\\tests\\"
 # project_dir <- "V:\\whiteboxing\\"
 # project_dir <- "C:\\Users\\Crutt\\Documents\\whiteboxing\\tests\\"
-project_dir <- "/datadisk/whiteboxing/2020Ada1/"
+project_dir <- "/datadisk/whiteboxing/2020GBM/"
 
 datasetnames <- c("adult"
                   , "bankmark"
@@ -72,3 +72,13 @@ test_set_size <- integer(nrow(datasets_master))
 names(train_set_size) <- rownames(datasets_master)
 names(test_set_size) <- rownames(datasets_master)
 
+get_best_params <- function() {
+  fromJSON(readLines(file(paste0(
+  project_dir
+  , datasetnames[i]
+  , pathsep
+  , model
+  , "_best_params_rnst_"
+  , random_states[r]
+  , ".json"))))
+}

@@ -172,6 +172,11 @@ data_prep <- function(i, max_tests) {
   )
 }
 
+mky <- function(y) {
+  lapply(classes, function(k, y) {
+    factor(2 * (y == k) - 1, levels = c("1", "-1"))}, y = y)
+}
+
 results_init <<- function(n_test) {
   prior <<- numeric(n_test)
   coverage <<- numeric(n_test)

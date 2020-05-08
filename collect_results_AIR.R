@@ -6,7 +6,7 @@ library(PMCMRplus)
 library(cowplot)
 library(rlang)
 options(max.print=20*72)
-algorithms <- c("Anchors", "BRL", "CHIRPS", "defragTrees", "inTrees")
+algorithms <- c("Anchors", "BRL", "CHIRPS", "defragTrees", "inTrees", "lore")
 
 # data management
 source("data_files_mgmt.R")
@@ -21,7 +21,7 @@ datasets_master$difficulty <- c("large"
                               ,"large")
 
 maindir <- "sens"
-sensdir <- "ada1_sensitivity"
+sensdir <- "ada2_sensitivity"
 
 resfilesdirs <- paste0(project_dir, maindir, pathsep, datasetnames, pathsep)
 sensdirs <- paste0(resfilesdirs, sensdir, pathsep)
@@ -154,7 +154,29 @@ stability_tr <- get_sensitivity("stability.tr.")
 get_best_sens(stability_tr)
 
 # comparative analysis
+rm(list=ls())
+
+library(dplyr)
+library(tidyr)
+library(PMCMRplus)
+library(cowplot)
+library(rlang)
+options(max.print=20*72)
+algorithms <- c("Anchors", "BRL", "CHIRPS", "defragTrees", "inTrees", "lore")
+
+source("data_files_mgmt.R")
+datasets_master$difficulty <- c("large"
+                                , "small"
+                                , "small"
+                                , "small"
+                                , "small"
+                                , "small"
+                                , "small"
+                                , "small"
+                                ,"large")
+
 patt <- paste0("(", paste(algorithms, collapse = ")|("), ")")
+resfilesdirs <- paste0(project_dir, datasetnames, pathsep)
 
 first_comp <- TRUE
 first_comp_summ <- TRUE
@@ -232,7 +254,7 @@ comp_results$pretty.rule[comp_results$pretty.rule == "[]"] <- "{default}"
 
 # adjust 0-length rules to be valued as 1, {default}
 comp_results$rule.length <- ifelse(comp_results$pretty.rule == "{default}"
-                                   , 0
+                                   , 1
                                    , comp_results$rule.length)
 
 # calculate weighted excl.cov
