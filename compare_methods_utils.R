@@ -61,11 +61,12 @@ evaluate <- function(prior_labels, post_idx, classes) {
   # basic results
   if (sum(post_idx) == 0) {
     # no coverage
-    counts <- 0
-    covered <- 0
-    ci <- 0
+    zeros <- rep(0, length(classes))
+    counts <- zeros
+    covered <- zeros
+    ci <- zeros
     labels <- factor(character(0), levels = classes)
-    posterior <- 0
+    posterior <- zeros
   } else {
     p_counts = p_count_corrected(prior_labels[post_idx], classes)
     counts = p_counts[["counts"]]
@@ -280,6 +281,14 @@ inTrees_benchmark <- function(forest, ds_container, ntree, maxdepth, model) {
                     }
                   })
   
+  rl_ln <- rl_ln + sapply(gregexpr("%in%", learner[rule_idx,4])
+                          , function(x) {
+                            if (x == -1) {
+                              return(0)
+                            } else {
+                              length(x)[[1]][1]
+                            }
+                          })
   
   return(list(this_i = i
               , this_r = r
@@ -371,10 +380,15 @@ sbrl_generate_rule <- function(rule, reverse = FALSE) {
   }
 }
 
-apply_rule <- function(rule, instances) {
-  if (rule == "{default}") return(rep(TRUE, nrow(instances)))
+apply_rule <- function(rule, instances, algorithm) {
+  if (rule %in% c("{default}", "X[,1]==X[,1]")) return(rep(TRUE, nrow(instances)))
   instances$idx <- rownames(instances)
-  covered <- tryCatch(filter(instances, eval(parse_expr(rule))), error = function(e) select_all(instances[0, ]) )
+  if (algorithm == "inTrees") {
+    X <- instances
+    covered <- tryCatch(filter(X, eval(parse_expr(rule))), error = function(e) select_all(X[0, ]) )
+  } else {
+    covered <- tryCatch(filter(instances, eval(parse_expr(rule))), error = function(e) select_all(instances[0, ]) )
+  }
   return(ifelse(rownames(instances) %in% covered$idx, TRUE, FALSE))
 }
 
@@ -435,7 +449,6 @@ sbrl_benchmark <- function(ds_container, classes, lambda, eta, rule_maxlen, ncha
     sbrls[[pc]]$rule_idx <- sbrl_whichRule(sbrls[[pc]]$model, test_data)
     sbrls[[pc]]$rule_pos <- sapply(sbrls[[pc]]$rule_idx, function(x) {which(sbrls[[pc]]$model$rs$V1 == x)}) # create a positional index
     sbrls[[pc]]$rule_idx <- ifelse(sbrls[[pc]]$rule_idx == 0, sbrls[[pc]]$n_rules, sbrls[[pc]]$rule_idx) # makes rule extract easier
-    # sbrls[[pc]]$rl_ln <- sapply(gregexpr("=", sbrls[[pc]]$rules_plus_default[sbrls[[pc]]$rule_idx]), function(x) {ifelse(x[1] == -1, 0, length(x)[1])})
     sbrls[[pc]]$rule <- sbrls[[pc]]$rules_plus_default[sbrls[[pc]]$rule_idx]
     
     default_rule_pos <- max(sbrls[[pc]]$rule_pos)
@@ -455,13 +468,7 @@ sbrl_benchmark <- function(ds_container, classes, lambda, eta, rule_maxlen, ncha
       )
     }
     sbrls[[pc]]$concatenated_rule <- sapply(sbrls[[pc]]$rule_pos, concatenate_rule)
-    # sbrls[[pc]]$rl_ln <- sapply(sapply(sbrls[[pc]]$concatenated_rule, function(cr) {
-    #   unlist(sapply(c(discrete, continuous), function(dc, cr) {
-    #     if (grepl(dc, cr)) {
-    #       return(1)
-    #     }
-    #   }, cr = cr, USE.NAMES = FALSE))
-    # }, USE.NAMES = FALSE), sum)
+
     bangs <- gregexpr("!", sbrls[[pc]]$concatenated_rule)
     last_bang_pos <- sapply(bangs, function(b) b[length(b)])
     last_paren_pos <- unlist(sapply(1:length(last_bang_pos)
@@ -479,7 +486,7 @@ sbrl_benchmark <- function(ds_container, classes, lambda, eta, rule_maxlen, ncha
                                           , start = last_pos
                                           , stop = nchar(sbrls[[pc]]$concatenated_rule[b]))))
       if (ands[1] != -1) and <- length(ands)
-      rul_len <- 1
+      rul_len <- 0
       if (bang + and > 1) rul_len <- bang + and
       return(rul_len)
     })

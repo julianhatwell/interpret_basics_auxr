@@ -3,9 +3,9 @@ library(psych)
 library(ada)
 library(randomForest)
 library(gbm)
-library(foreach)
-library(parallel)
-library(doParallel)
+# library(foreach)
+# library(parallel)
+# library(doParallel)
 random_states <- 123 # :152
 source("compare_methods_utils.R")
 
@@ -16,36 +16,76 @@ max_tests <- 1000
 # model <- "samme.r"
 model <- "gbm"
 
-# algorithm <- "inTrees"
-algorithm <- "BRL"
+algorithm <- "inTrees"
+# algorithm <- "BRL"
 
 results_nrows <- length(random_states) * length(datasetnames)
 
-# adult 
-# rnr <- 1; ntree_divisor <- 5; inTrees_maxdepth <- 8; lambda <- 10; eta <- 1; rule_maxlen <- 8; nchain <- 10
+# choose a db
+rnr <- 1
 
-# bankmark
-# rnr <- 2; ntree_divisor <- 20; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 4; nchain <- 10
+if (model=="rf") {
+  # adult
+  if (rnr == 1) ntree_divisor <- 5; inTrees_maxdepth <- 8; lambda <- 10; eta <- 1; rule_maxlen <- 8; nchain <- 10
+  # bankmark
+  if (rnr == 2) ntree_divisor <- 20; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 4; nchain <- 10
+  # car
+  if (rnr == 3) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
+  # cardio
+  if (rnr == 4) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 4; nchain <- 10
+  # credit
+  if (rnr == 5) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 8; nchain <- 10
+  # german
+  if (rnr == 6) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 4; nchain <- 10
+  # lending_tiny_samp CANNOT BE DONE IN R
+  
+  # nursery
+  if (rnr == 8) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
+  # rcdv
+  if (rnr == 9) ntree_divisor <- 10; inTrees_maxdepth <- 8; lambda <- 10; eta <- 1; rule_maxlen <- 4; nchain <- 10
+}
 
-# car
-# rnr <- 3; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
+if (model %in% c("samme", "samme.r")) {
+  # adult
+  if (rnr == 1) ntree_divisor <- 5; inTrees_maxdepth <- 8; lambda <- 10; eta <- 1; rule_maxlen <- 8; nchain <- 10
+  # bankmark
+  if (rnr == 2) ntree_divisor <- 20; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 4; nchain <- 10
+  # car
+  if (rnr == 3) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
+  # cardio
+  if (rnr == 4) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 4; nchain <- 10
+  # credit
+  if (rnr == 5) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 8; nchain <- 10
+  # german
+  if (rnr == 6) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 4; nchain <- 10
+  # lending_tiny_samp CANNOT BE DONE IN R
+  
+  # nursery
+  if (rnr == 8) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
+  # rcdv
+  if (rnr == 9) ntree_divisor <- 10; inTrees_maxdepth <- 8; lambda <- 10; eta <- 1; rule_maxlen <- 4; nchain <- 10
+}
 
-# cardio
-# rnr <- 4; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 4; nchain <- 10
-
-# credit
-# rnr <- 5; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 8; nchain <- 10
-
-# german
-# rnr <- 6; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 5; eta <- 1; rule_maxlen <- 4; nchain <- 10
-
-# lending_tiny_samp CANNOT BE DONE IN R
-
-# nursery
-# rnr <- 8; ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
-
-# rcdv
-rnr <- 9; ntree_divisor <- 10; inTrees_maxdepth <- 8; lambda <- 10; eta <- 1; rule_maxlen <- 4; nchain <- 10
+if (model == "gbm") {
+  # adult
+  if (rnr == 1) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
+  # bankmark
+  if (rnr == 2) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
+  # car
+  if (rnr == 3) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
+  # cardio
+  if (rnr == 4) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
+  # credit
+  if (rnr == 5) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
+  # german
+  if (rnr == 6) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
+  # lending_tiny_samp CANNOT BE DONE IN R
+  
+  # nursery
+  if (rnr == 8) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 5; rule_maxlen <- 8; nchain <- 10
+  # rcdv
+  if (rnr == 9) ntree_divisor <- 1; inTrees_maxdepth <- 8; lambda <- 10; eta <- 1; rule_maxlen <- 4; nchain <- 10
+}
 
 # set counters
 r <- ((rnr - 1) %/% length(datasetnames)) + 1
@@ -80,14 +120,8 @@ if (model == "rf") {
 if (model %in% c("samme", "samme.r")) {
   type <- "discrete"
   if (model == "samme.r") type <- "real"
-  bestparams <- fromJSON(readLines(file(paste0(
-    project_dir
-    , datasetnames[i]
-    , pathsep
-    , model
-    , "_best_params_rnst_"
-    , random_states[r]
-    , ".json"))))
+  
+  bestparams <- get_best_params()
   ntree <- bestparams$n_estimators
   max_depth_pos <- regexpr("max_depth=", bestparams$base_estimator) + nchar("max_depth=")
   max_depth <- as.integer(substr(bestparams$base_estimator, max_depth_pos, max_depth_pos))
@@ -151,14 +185,7 @@ if (model %in% c("samme", "samme.r")) {
   }
 }
 if (model == "gbm") {
-  bestparams <- fromJSON(readLines(file(paste0(
-    project_dir
-    , datasetnames[i]
-    , pathsep
-    , model
-    , "_best_params_rnst_"
-    , random_states[r]
-    , ".json"))))
+  bestparams <- get_best_params()
   
   if (!is.na(positive_classes[i])) {
     dat_train[, class_cols[i]] <- ifelse(dat_train[, class_cols[i]] == positive_classes[i], 1, 0)
@@ -213,7 +240,7 @@ if (model == "gbm") {
 if (algorithm == "inTrees") {
   benchmark <- inTrees_benchmark(forest = forest
                                  , ds_container = ds_container
-                                 , ntree = ntree / ntree_divisor
+                                 , ntree = bestparams$n_estimators / ntree_divisor
                                  , maxdepth = inTrees_maxdepth
                                  , model = model
   )
@@ -234,7 +261,7 @@ results_init(n_test)
 for (j in 1:n_test) {
   rule <- benchmark$rule[j]
   
-  covered_instances <- apply_rule(rule, ds_container$X_test)
+  covered_instances <- apply_rule(rule, ds_container$X_test, algorithm)
   covered_instances <- covered_instances[-j] # drop out current instance
   loo_true_labels <- ds_container$y_test[-j]
 
@@ -339,6 +366,19 @@ f_perf <- mean(forest_label == ds_container$y_test)
 p_perf <- mean(benchmark$model_accurate)
 fid <- mean(benchmark$label == as.numeric(forest_label))
 
+make_sym <- function(x) {
+  dm <- dim(x)
+  d <- diff(dm)
+  if(d == 0) return(x)
+  if(d > 0) { # add rows
+    x <- rbind(x, rep(rep(0, dm[2]), d))
+    return(x)
+  } else { # add columns
+    x <- cbind(x, rep(rep(0, dm[1]), d))
+    return(x)
+  }
+}
+
 # save results to file before exiting loop
 write.csv(data.frame(dataset_name = datasetnames[i]
     , algorithm = algorithm
@@ -358,8 +398,8 @@ write.csv(data.frame(dataset_name = datasetnames[i]
                                       , factor(ds_container$y_test)))$kappa
     , proxy_performance = p_perf
     , sd_proxy_performance = sqrt((p_perf/(1-p_perf))/length(benchmark$model_accurate))
-    , proxy_kappa = cohen.kappa(table(benchmark$label
-                                       , forest_label))$kappa
+    , proxy_kappa = cohen.kappa(make_sym(table(benchmark$label
+                                       , forest_label)))$kappa
     , fidelity = fid
     , sd_fidelity = sqrt((fid/(1-fid))/n_test)
 ), file = paste0(project_dir

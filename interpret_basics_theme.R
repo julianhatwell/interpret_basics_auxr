@@ -1,7 +1,12 @@
 # Theme for TC report
 # a nice colour palette
 myPal <- c("#8DD3C7", "#B0A8B3", "#9FB5D6", "#9EC0FA", "#DB8072")
+# rgb(141,211,199), rgb(176,168,179), rgb(159,181,214), rgb(158,192,250), rgb(219,128,114)
 myPalDark <- c("#4D8377", "#504853", "#3F5576", "#3E40DA", "#AB2012")
+# rgb(77,131,119), rgb(80,72,83), rgb(63,85,118), rgb(62,64,218), rgb(171,32,18)
+
+# don't be afraid to use this deep red #943200, rgb(148,50,0)
+# rgb(153,153,153)
 myPalContrasts <- c(myPalDark[1], myPalDark[5], myPal[2], myPal[4]
                     ,"#999999"
                     , myPal[1], myPal[5], myPalDark[2], myPalDark[4])

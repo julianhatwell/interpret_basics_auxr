@@ -1,158 +1,3 @@
-rm(list=ls())
-
-library(dplyr)
-library(tidyr)
-library(PMCMRplus)
-library(cowplot)
-library(rlang)
-options(max.print=20*72)
-algorithms <- c("Anchors", "BRL", "CHIRPS", "defragTrees", "inTrees", "lore")
-
-# data management
-source("data_files_mgmt.R")
-datasets_master$difficulty <- c("large"
-                              , "small"
-                              , "small"
-                              , "small"
-                              , "small"
-                              , "small"
-                              , "small"
-                              , "small"
-                              ,"large")
-
-maindir <- "sens"
-sensdir <- "ada2_sensitivity"
-
-resfilesdirs <- paste0(project_dir, maindir, pathsep, datasetnames, pathsep)
-sensdirs <- paste0(resfilesdirs, sensdir, pathsep)
-# sensdirs <- paste0(resfilesdirs, "rf_sensitivity", pathsep)
-
-# sensitivity analysis
-first_pass <- TRUE
-for (i in seq_along(sensdirs)) {
-  
-  filepath <- normalizePath(file.path(sensdirs[i]))
-  filenames <- dir(filepath)
-  for (filename in filenames) {
-    
-    if (!grepl("summary", filename)) {
-      wcts <- gregexpr("wcts\\_(conf\\_weighted|majority|targetclass|signdelta)", filename)
-      wcts <- regmatches(filename, wcts)[[1]]
-      wcts <- substr(gsub("wcts\\_", "", wcts), 1, 3)
-      supp <- gregexpr("sp\\_0.[0-9]{1,3}", filename)
-      supp <- regmatches(filename, supp)[[1]]
-      supp <- as.numeric(gsub("sp\\_", "", supp))
-      alpp <- gregexpr("ap\\_0.[0-9]", filename)
-      alpp <- regmatches(filename, alpp)[[1]]
-      alpp <- as.numeric(gsub("ap\\_", "", alpp))
-      dpb <- gregexpr("dpb\\_[1-9]{1,2}", filename)
-      dpb <- regmatches(filename, dpb)[[1]]
-      dpb <- as.numeric(gsub("dpb\\_", "", dpb))
-      dpeq <- gregexpr("dpeq\\_(True|False)", filename)
-      dpeq <- regmatches(filename, dpeq)[[1]]
-      dpeq <- as.logical(toupper(gsub("dpeq\\_", "", dpeq)))
-      sf <- gregexpr("sf\\_[1-9]", filename)
-      sf <- regmatches(filename, sf)[[1]]
-      sf <- as.numeric(gsub("sf\\_", "", sf))
-      wht <- gregexpr("w\\_(kldiv|nothing|chisq)", filename)
-      wht <- regmatches(filename, wht)[[1]]
-      wht <- gsub("w\\_", "", wht)
-      
-      results <- read.csv(paste0(sensdirs[i], filename), stringsAsFactors = FALSE)
-      
-      # datasetname <- rep(dsname, nrow(results))
-      wcts <- rep(wcts, nrow(results))
-      support <- rep(supp, nrow(results))
-      alpha_paths <- rep(alpp, nrow(results))
-      disc_path_bins <- rep(dpb, nrow(results))
-      disc_path_eqcounts <- rep(dpeq, nrow(results))
-      score_func <- rep(sf, nrow(results))
-      weighting <- rep(wht, nrow(results))
-      
-      results <- cbind(results, as.data.frame(cbind(wcts, support, alpha_paths, disc_path_bins, disc_path_eqcounts, score_func, weighting), stringsAsFactors = FALSE))
-      if (first_pass) {
-        main_results <- results
-        first_pass <- FALSE
-      } else {
-        main_results <- rbind(main_results, results)
-      }
-    } else { # summary
-      
-    }
-  }
-}
-
-sens_results <- main_results %>% mutate(
-  dataset_name = factor(dataset_name)
-  , true.class = factor(true.class)
-  , true.class.label = factor(true.class.label)
-  , predicted.class = factor(predicted.class)
-  , predicted.class.label = factor(predicted.class.label)
-  , target.class = factor(target.class)
-  , target.class.label = factor(target.class.label)
-  , wcts = factor(wcts)
-  , support = factor(support)
-  , weighting = factor(weighting)
-  , score_func = factor(score_func)
-  , wxcoverage.tr. = xcoverage.tr. * (nci.tr./(ci.tr. + nci.tr.))
-  , wxcoverage.tt. = xcoverage.tt. * (nci.tt./(ci.tt. + nci.tt.))
-)
-
-# get the listing of all the sensitivity analyses by grid
-sens_groups <- with(sens_results, expand.grid(
-  wcts = unique(wcts)
-  , support = unique(support)
-  , alpha = unique(alpha_paths)
-  , bins = unique(disc_path_bins)
-  , eqcounts = unique(disc_path_eqcounts)
-  , func = unique(score_func)
-  , weights = unique(weighting)))
-# provide id numbers
-sens_groups$id <- as.numeric(rownames(sens_groups))
-
-get_sensitivity <- function(measure) {
-  sensitivity_analysis <- list()
-  for (ds in rownames(datasets_master)) {
-    sv <- filter(sens_results, dataset_name == ds)
-    # order must be same as sens_groups above
-    sens_values <- tapply(sv[[measure]], list(sv$wcts
-                                              , sv$support
-                                              , sv$disc_path_bins
-                                              , sv$disc_path_eqcounts
-                                              , sv$score_func
-                                              , sv$weighting), identity)
-    
-    sens_values <- matrix(unlist(sens_values), ncol = nrow(sens_groups))
-    test_set_size[ds] <- nrow(sens_values)
-    # get a first taste of results
-    sens_groups$sd <- apply(sens_values, 2, sd)
-    sens_groups$st.err <- sens_groups$sd / sqrt(test_set_size[ds])
-    mn <- apply(sens_values, 2, mean)
-    sens_groups$lwr_mn_ci <- mn - sens_groups$st.err
-    sens_groups$mn <- mn
-    sens_groups$upr_mn_ci <- mn + sens_groups$st.err
-    qntl <- apply(sens_values, 2, quantile)
-    sens_groups$lwrq <- qntl[2, ]
-    sens_groups$med <- apply(sens_values, 2, median)
-    sens_groups$uprq <- qntl[4, ]
-    sens_groups$rank_mean <- colMeans(t(apply(sens_values, 1, rank)))
-    sens_groups$rank_sum <- colSums(t(apply(sens_values, 1, rank)))
-    
-    sensitivity_analysis[[ds]] <- sens_groups
-  }
-  return(sensitivity_analysis)
-}
-
-get_best_sens <- function(sens) {
-  for (ds in rownames(datasets_master)) {
-    print(ds)
-    print(sens[[ds]][which.max(sens[[ds]][["rank_mean"]]), ])
-  }
-}
-
-stability_tr <- get_sensitivity("stability.tr.")
-get_best_sens(stability_tr)
-
 # comparative analysis
 rm(list=ls())
 
@@ -162,20 +7,14 @@ library(PMCMRplus)
 library(cowplot)
 library(rlang)
 options(max.print=20*72)
-algorithms <- c("Anchors", "BRL", "CHIRPS", "defragTrees", "inTrees", "lore")
+algo_variant <- "gbt-HIPS" # there is a hardcoded version that must be changed. Find and replace.
+algo_input_csv <- c("Anchors", "BRL", "CHIRPS", "defragTrees", "inTrees", "lore")
+patt_input_csv <- paste0("(", paste(algo_input_csv, collapse = ")|("), ")")
+algorithms <- c("Anchors", "BRL", algo_variant, "defragTrees", "inTrees", "LORE")
+algorithms <- sort(algorithms)
 
-source("data_files_mgmt.R")
-datasets_master$difficulty <- c("large"
-                                , "small"
-                                , "small"
-                                , "small"
-                                , "small"
-                                , "small"
-                                , "small"
-                                , "small"
-                                ,"large")
+source("data_files_mgmt_gbt.R")
 
-patt <- paste0("(", paste(algorithms, collapse = ")|("), ")")
 resfilesdirs <- paste0(project_dir, datasetnames, pathsep)
 
 first_comp <- TRUE
@@ -194,7 +33,7 @@ for (i in seq_along(resfilesdirs)) {
       train_set_size[datasetname] <- nrow(read.csv(normalizePath(file.path(filepath, fn))
                                                    , stringsAsFactors = FALSE))
     }
-    if (grepl(patt, fn)) {
+    if (grepl(patt_input_csv, fn)) {
       # load a sheet
       results <- read.csv(normalizePath(file.path(filepath, fn))
                           , stringsAsFactors = FALSE)
@@ -246,11 +85,15 @@ for (i in seq_along(resfilesdirs)) {
   }
 }
 names(comp_results) <- sub("_name", "", names(comp_results))
-comp_results$algorithm <- ifelse(comp_results$algorithm == "greedy_stab", "CHIRPS", comp_results$algorithm)
-
+comp_results$algorithm <- ifelse(comp_results$algorithm == "greedy_stab", algo_variant, comp_results$algorithm)
+comp_results$algorithm <- ifelse(comp_results$algorithm == "lore", "LORE", comp_results$algorithm)
+# comp_results$algorithm <- ifelse(comp_results$algorithm == "GTB_HIPS", "gbt-HIPS", comp_results$algorithm)
 comp_results$pretty.rule[is.na(comp_results$pretty.rule)] <- "{default}"
 comp_results$pretty.rule[comp_results$pretty.rule == ""] <- "{default}"
 comp_results$pretty.rule[comp_results$pretty.rule == "[]"] <- "{default}"
+comp_results$pretty.rule[comp_results$pretty.rule == "X[,1]==X[,1]"] <- "{default}"
+comp_results$dataset[comp_results$dataset == "lending_tiny_samp"] <- "lending"
+comp_results$dataset[comp_results$dataset == "bankmark"] <- "bank"
 
 # adjust 0-length rules to be valued as 1, {default}
 comp_results$rule.length <- ifelse(comp_results$pretty.rule == "{default}"
@@ -310,6 +153,22 @@ get_uprq_of <- function(metric) {
   get_func_of(uprq, metric)
 }
 
+above.75 <- function(x) {
+  mean(x > 0.75) # shouldn't be any NA to rm.
+}
+
+get_above.75_of <- function(metric) {
+  get_func_of(above.75, metric)
+}
+
+equal.zero <- function(x) {
+  mean(x == 0) # shouldn't be any NA to rm.
+}
+
+get_equal.zero_of <- function(metric) {
+  get_func_of(equal.zero, metric)
+}
+
 test_set_size_sqrt <- sapply(test_set_size, function(x) {
   sqrt(min(1000, x))
 })
@@ -323,9 +182,10 @@ get_mean_ranks_of <- function(meas) {
   summarise(cres
             , Anchors = mean(Anchors)
             , BRL = mean(BRL)
-            , CHIRPS = mean(CHIRPS)
+            , `gbt-HIPS` = mean(`gbt-HIPS`)
             , defragTrees = mean(defragTrees)
-            , inTrees = mean(inTrees))  
+            , inTrees = mean(inTrees)
+            , LORE = mean(LORE))
 }
 
 post_hoc_ztest <- function(meas) {
@@ -341,8 +201,7 @@ post_hoc_ztest <- function(meas) {
   names(ranks) <- datasetnames
   print(ranks)
   md <- scnd_rank - top_rank
-  k <- rep(5, 9)
-  k[7] <- 3
+  k <- c(6, 6, 6, 5, 6, 6, 4, 5, 6)
   z <- (md) / sqrt((k * (k + 1)) / (6 * test_set_size))
   print(z)
   ztest <- pnorm(z, lower.tail = FALSE)
@@ -366,6 +225,7 @@ round(get_mean_of(meas), 4)
 round(st_err, 4)
 get_mean_ranks_of(meas)
 post_hoc_ztest(meas)
+get_above.75_of(meas)
 
 meas <- "precision.tt."
 st_err <- get_sd_of(meas) / test_set_size_sqrt
@@ -386,12 +246,11 @@ round(st_err, 4)
 get_mean_ranks_of(meas)
 post_hoc_ztest(meas)
 
-meas <- "cc.tt."
+meas <- "rule.length"
 st_err <- get_sd_of(meas) / test_set_size_sqrt
 round(get_mean_of(meas), 4)
 round(st_err, 4)
-get_mean_ranks_of(meas)
-post_hoc_ztest(meas)
+get_equal.zero_of("rule.length")
 
 meas <- "elapsed_time"
 st_err <- get_sd_of(meas) / test_set_size_sqrt
@@ -415,6 +274,14 @@ get_means_for_plotting <- function(meas, div = 1, select_algos = algorithms) {
   return(means)
 }
 
+get_points_for_plotting <- function(func_table, values_to_name, rows_to_name = "dataset") {
+  vtn <- enquo(values_to_name)
+  out <- as.data.frame(func_table)
+  out[[rows_to_name]] <- dimnames(get_above.75_of(meas))[[1]]
+  out <- gather(out, algorithm, !!vtn, -dataset)
+  return(out)
+}
+
 # plot themes
 source("KTheme.R")
 reds <- k.grad.red.rev(2)
@@ -422,13 +289,14 @@ ongs <- k.grad.orange.rev(2)
 blus <- k.grad.blue.rev(2)
 grns <- k.grad.green.rev(2)
 prps <- k.grad.purple.rev(2)
+grys <- k.grad.grey.rev(2)
 
-myPal1 <- c(reds[1], ongs[1], blus[2], grns[1], prps[1])
+myPal1 <- c(reds[1], ongs[1], grns[1], blus[2], prps[1], grys[2])
 myPal2 <- myPal1
-myPal2 <- paste(myPal2, c(rep("55", 2), "", rep("55", 2)), sep = "")
-myAlph1 <- c(0.5, 0.5, 1, 0.5, 0.5)
-myAlphFixed <- c(rep(0.25, 18), rep(0.75, 9), rep(0.25, 18))
-myShap <- c(1, 2, 15, 5, 6)
+myPal2 <- paste(myPal2, c(rep("55", 3), "", rep("55", 2)), sep = "")
+myAlph1 <- c(rep(0.5, 3), 1, rep(0.5, 2))
+myAlphFixed <- c(rep(0.25, 27), rep(1.0, 9), rep(0.25, 18))
+myShap <- c(11, 2, 5, 15, 6, 1)
 names(myPal1) <- algorithms
 names(myPal2) <- algorithms
 names(myAlph1) <- algorithms
@@ -444,18 +312,21 @@ sens_colos_silent <- scale_colour_manual(values = c(k.purple, k.pink, k.brightbl
                                          , guide = FALSE)
 sens_colos <- scale_colour_manual(values = c(k.purple, k.pink, k.brightblue))
 
+
 get_ylabel <- function(y) {
   ylabel <- gsub("cc", "coverage of target class"
                  , gsub("wx", "exclusive "
-                        , gsub("_", " "
-                               , gsub(".tt.", "", y))))
+                   , gsub("stability", "reliability"
+                          , gsub("_", " "
+                              , gsub("rule.length", "Rule antecedent cardinality"
+                                 , gsub(".tt.", "", y))))))
 }
 
 get_main_plot <- function(meas
                           , sc_y = scale_y_continuous()
                           , div = 1
                           , select_algos = algorithms) {
-  myGeomPoint <- geom_point(size = 1.5)
+  myGeomPoint <- geom_point(size = 5)
   myGeomErrorBar <- geom_errorbar(width = 0.25)
   myGeomLine <- geom_line(size = 0.25, alpha = myAlphFixed[names(myAlphFixed) %in% select_algos])
   ggplot(data = get_means_for_plotting(meas, div, select_algos)
@@ -475,48 +346,109 @@ get_main_plot <- function(meas
     alpas +
     shaps +
     sc_y +
-    scale_x_discrete(labels = get_datasetname_stems(datasetnames)) +
     ylab(get_ylabel(meas)) +
-    xlab("data set")
+    xlab("data set") +
+    theme(
+      legend.title = element_text(size = 30),
+      legend.text = element_text(size = 26),
+      axis.title = element_text(size = 30),
+      axis.text = element_text(size = 26)
+    )
 }
+get_main_plot("precision.tt.", scale_y_continuous(limits = c(0.0, 1.0)))
 get_main_plot("stability.tt.", scale_y_continuous(limits = c(0.0, 1.0)))
+get_main_plot("coverage.tt.", scale_y_continuous(limits = c(0.0, 1.00)))
+get_main_plot("wxcoverage.tt.", scale_y_continuous(limits = c(0.0, 0.6)))
+get_main_plot("rule.length")
+get_main_plot("elapsed_time", scale_y_log10())
+
+get_followup_plot <- function(
+  summary_table
+  , y_label
+  #                         
+  , sc_y = scale_y_continuous()
+                          , select_algos = algorithms) {
+  myGeomPoint <- geom_point(size = 5)
+  myGeomLine <- geom_line(size = 0.25, alpha = myAlphFixed[names(myAlphFixed) %in% select_algos])
+  ggplot(data = get_points_for_plotting(summary_table
+                                        , values_to_name = "place_holder") # get_points_for_plotting(summary_table, values_to_name = values_to_name)
+         , aes(y = place_holder
+               , x = dataset
+               , colour = algorithm
+               , group = algorithm
+               , alpha = algorithm
+               , shape = algorithm)) +
+    myGgTheme +
+    myGeomLine +
+    myGeomPoint +
+    colos1 + 
+    alpas +
+    shaps +
+    sc_y +
+    ylab(y_label) +
+    xlab("data set") +
+    theme(
+      legend.title = element_text(size = 30),
+      legend.text = element_text(size = 26),
+      axis.title = element_text(size = 30),
+      axis.text = element_text(size = 26)
+    )
+}
+get_followup_plot(get_above.75_of("stability.tt.")
+                  , y_label = "Proportion of reliability scores > 0.75")
+
+algo_alphas <- myAlphFixed[
+  as.vector(t(matrix(colnames(get_mean_of(meas))
+       , byrow = TRUE
+       , nrow = nrow(get_mean_of(meas))
+       , ncol = ncol(get_mean_of(meas)))))[!is.na(as.vector(t(get_mean_of(meas))))]
+  ]
 
 get_main_boxplot <- function(meas
                              , sc_y = scale_y_continuous()) {
-
-  ggplot(data = dplyr::select(comp_results, instance_id, dataset, !! enquo(meas), algorithm) %>%
-           mutate(dataset = get_datasetname_stems(dataset))
+  ggplot(data = dplyr::select(comp_results, instance_id, dataset, !! enquo(meas), algorithm)
          , aes(y = !!enquo(meas)
                , colour = algorithm)) +
     geom_boxplot(outlier.alpha = 0.1
+                 , alpha = algo_alphas
                  , position = position_dodge2(width = 2
                                               , padding = 0.2)
                  ) +
     colos2 +
     facet_wrap(dataset~.) +
-    scale_x_continuous(labels = "CHIRPS"
+    scale_x_continuous(labels = NULL
                        , breaks = 0) +
     sc_y +
     myGgTheme +
     theme(legend.position = "bottom"
           , legend.title = element_blank()
           , strip.text = element_text(size = 8
-                                      , margin = margin(1,0,1,0, "pt"))
+                                      , margin = ggplot2::margin(1,0,1,0, "pt"))
           ) +
-    ylab(get_ylabel(as_label(enquo(meas))))
-  
+    ylab(get_ylabel(as_label(enquo(meas)))) +
+    theme(
+      legend.title = element_text(size = 30),
+      legend.text = element_text(size = 26),
+      axis.title = element_text(size = 30),
+      axis.text = element_text(size = 26),
+      strip.text = element_text(size = 30)
+    )
 }
-get_main_boxplot(stability.tt.)
-get_main_boxplot(wxcoverage.tt.
-                 , sc_y = scale_y_continuous(limits = c(0.0, 1.0)))
 
+get_main_boxplot(precision.tt.)
+get_main_boxplot(stability.tt.)
+get_main_boxplot(coverage.tt.)
+get_main_boxplot(wxcoverage.tt.
+                 , sc_y = scale_y_continuous(limits = c(0.0, 0.6)))
+get_main_boxplot(rule.length)
+get_main_boxplot(elapsed_time, scale_y_log10())
 
 
 tikz(file = "cc.tikz", width = 6.85, height = 2)
 get_main_plot("cc.tt."
               , sc_y = scale_y_continuous(limits = c(0.0, 1.0))
               , div = test_set_size
-              , select_algos = c("Anchors", "CHIRPS"))
+              , select_algos = c("Anchors", algo_variant))
 dev.off()
 
 tikz(file = "prec.tikz", width = 6.85, height = 2)
@@ -545,77 +477,6 @@ dev.off()
 tikz(file = "xcovbox.tikz", width = 6.85, height = 3)
 get_main_boxplot(wxcoverage.tt.
                  , sc_y = scale_y_continuous(limits = c(0.0, 1.0)))
-dev.off()
-
-# sensitivity plots
-best_sens <- lapply(rownames(datasets_master), function(ds) {
-  sens <- get_sensitivity("stability.tr.")
-  sens[[ds]][which.max(sens[[ds]][["rank_mean"]]), ][["id"]]
-})
-names(best_sens) <- rownames(datasets_master)
-idx <- c(1:6, 13:18, 25:30, 7:12, 19:24, 31:36)
-idx <- c(idx, idx + 36)
-
-for (ds in rownames(datasets_master)) {
-  sens_plotting <- stability_sens[[ds]]
-  sens_plotting$best <- sens_plotting$id == best_sens[[ds]]
-  sens_plotting <- sens_plotting[idx, ] # re-order
-  sens_plotting$id_plotting <- c(1:18, 20:37, 39:56, 58:75)
-  tr_top_mean <- sens_plotting$id_plotting[which(sens_plotting$best)]
-  arrowbase <- min(sens_plotting$lwr_mn_ci)
-  arrowtip <- arrowbase + (max(sens_plotting$upr_mn_ci) - arrowbase) / 8
-  g <- ggplot(data = sens_plotting
-         , aes(y = mn, ymin = lwr_mn_ci, ymax = upr_mn_ci
-               , x = id_plotting
-               , shape = alpha
-               , colour = func
-               , size = support)) +
-    geom_point() +
-    geom_errorbar(size=0.255, width=1) +
-    geom_segment(x = tr_top_mean
-                 , xend = tr_top_mean
-                 , y = arrowbase
-                 , yend = arrowtip
-                 , arrow = arrow(length = unit(0.025, "npc"))
-                 , colour = myPalNeut[7]
-                 , size = 0.5) +
-    labs(title = get_datasetname_stems(ds)
-         , x = NULL, y = NULL) +
-    scale_size_discrete(range = c(0.7, 1.3), guide = FALSE) +
-    scale_shape(guide = FALSE) +
-    sens_colos_silent +
-    geom_vline(xintercept = c(19, 57)
-               , linetype = 2
-               , colour = myPalNeut[4]) +
-    geom_vline(xintercept = 38
-               , linetype = 1
-               , colour = myPalNeut[3]) +
-    myGgTheme +
-    theme(axis.text.x = element_blank()
-          , axis.ticks.x = element_blank())
-  
-  tikz(file = paste0(get_datasetname_stems(ds), "_sens.tikz"), width = 2.2, height = 1.5)
-  print(g)
-  dev.off()
-}
-# plot to get only the legend
-legend_plot <- ggplot(data = sens_plotting
-             , aes(y = mn, ymin = lwr_mn_ci, ymax = upr_mn_ci
-                   , x = id_plotting
-                   , shape = alpha
-                   , colour = func
-                   , size = support)) +
-  geom_point() +
-  geom_errorbar(size=0.5, width=1) +
-  scale_size_discrete(range = c(0.7, 1.3), labels = c("0.1", "0.2")) +
-  sens_colos +
-  theme(legend.box = "horizontal"
-        , legend.key = element_blank())
-
-lgnd <- get_legend(legend_plot)
-grid.newpage()
-tikz(file = "legend_sens.tikz", width = 2.2, height = 1.5)
-grid.draw(lgnd)
 dev.off()
 
 #########
@@ -652,6 +513,10 @@ get_med_plot <- function(meas
                  , gsub("wx", "exclusive "
                         , gsub("_", " "
                                , gsub(".tt.", "", meas))))
+  myGeomPoint <- geom_point(size = 1.5)
+  myGeomErrorBar <- geom_errorbar(width = 0.25)
+  myGeomLine <- geom_line(size = 0.25, alpha = myAlphFixed[names(myAlphFixed) %in% select_algos])
+  # y_label <- get_ylabel <- function(meas)
   ggplot(data = get_meds_for_plotting(meas, div, select_algos)
          , aes(y = m
                , ymin = lwr
@@ -665,11 +530,11 @@ get_med_plot <- function(meas
     myGeomLine +
     myGeomPoint +
     myGeomErrorBar +
-    colos + 
+    colos1 + 
     alpas +
     shaps +
     sc_y +
-    scale_x_discrete(labels = get_datasetname_stems(datasetnames)) +
+    # scale_x_discrete(labels = get_datasetname_stems(datasetnames)) +
     ylab(ylabel) +
     xlab("data set")
 }
@@ -677,9 +542,9 @@ get_med_plot("stability.tt.", scale_y_continuous(limits = c(0.0, 1.0)))
 
 
 get_med_plot("cc.tt."
-             , sc_y = scale_y_continuous(limits = c(0.0, 1.0))
-             , div = test_set_size
-             , select_algos = c("Anchors", "CHIRPS"))
+           , sc_y = scale_y_continuous(limits = c(0.0, 1.0))
+           , div = test_set_size
+           , select_algos = c("Anchors", algo_variant))
 
 
 meas <- "stability.tt."
@@ -725,5 +590,63 @@ ggplot(data = cres # get_meds_for_plotting("stability.tt.")
   geom_boxplot(position = position_dodge()) +
   #geom_point() +
   #geom_errorbar(width = 0.2) +
-  colos + 
+  colos1 + 
   alpas
+
+ggplot(data = comp_results, 
+       aes(y = stability.tt., x = wxcoverage.tt.
+           , colour = algorithm)) +
+  geom_point(alpha = 0.1) +
+  colos1 +
+  myGgTheme_facets +
+  labs(y = get_ylabel("stability.tt."), x = get_ylabel("wxcoverage.tt.")) +
+  facet_grid(algorithm ~ dataset)
+
+ggplot(data = comp_results, 
+       aes(y = stability.tt., x = wxcoverage.tt.
+           , colour = algorithm)) +
+  geom_point(alpha = 0.1, size = 2) +
+  colos1 +
+  myGgTheme_facets +
+  labs(y = get_ylabel("stability.tt."), x = get_ylabel("wxcoverage.tt.")) +
+  scale_x_continuous(breaks = c(0.25, 0.75)) +
+  scale_y_continuous(breaks = c(0.25, 0.75)) + 
+  facet_grid(algorithm ~ dataset) +
+  theme(
+    legend.position = "none",
+    axis.title = element_text(size = 30),
+    axis.text = element_text(size = 26),
+    strip.text = element_text(size = 30)
+  )
+
+ggplot(data = comp_results, 
+       aes(y = rule.length, x = stability.tt.
+           , colour = algorithm)) +
+  geom_point(alpha = 0.1, size = 2) +
+  colos1 +
+  myGgTheme_facets +
+  labs(x = get_ylabel("stability.tt."), y = get_ylabel("rule.length")) +
+  scale_x_continuous(breaks = c(0.25, 0.75)) + 
+  facet_grid(algorithm ~ dataset) +
+  theme(
+    legend.position = "none",
+    axis.title = element_text(size = 30),
+    axis.text = element_text(size = 26),
+    strip.text = element_text(size = 30)
+  )
+
+ggplot(data = comp_results, 
+       aes(y = rule.length, x = coverage.tt.
+           , colour = algorithm)) +
+  geom_point(alpha = 0.1, size = 2) +
+  colos1 +
+  myGgTheme_facets +
+  labs(x = get_ylabel("wxcoverage.tt."), y = get_ylabel("rule.length")) +
+  scale_x_continuous(breaks = c(0.25, 0.75)) + 
+  facet_grid(algorithm ~ dataset) +
+  theme(
+    legend.position = "none",
+    axis.title = element_text(size = 30),
+    axis.text = element_text(size = 26),
+    strip.text = element_text(size = 30)
+  )

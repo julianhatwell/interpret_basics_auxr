@@ -49,10 +49,22 @@ class_cols <- c(
   , "recid"
 )
 
+difficulty <- c("large"
+                , "small"
+                , "small"
+                , "small"
+                , "small"
+                , "small"
+                , "small"
+                , "small"
+                ,"large")
+
 positive_classes <- c(">50K", "yes", "acc", NA, "plus", "good", "Fully Paid", NA, "Y")
 negative_classes <- c("<=50K", "no", "unacc", NA, "minus", "bad", "Charged Off", NA, "N")
 
-datasets_master <- data.frame(class_cols, n_classes, positive_classes, negative_classes, stringsAsFactors = FALSE)
+datasets_master <- data.frame(class_cols, n_classes, positive_classes, negative_classes, difficulty, stringsAsFactors = FALSE)
+
+
 
 rownames(datasets_master) <- datasetnames
 
