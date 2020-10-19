@@ -14,7 +14,7 @@ data_dir <- "~/Documents/github/explain_te/CHIRPS/datafiles/"
 # project_dir <- "V:\\whiteboxing\\tests\\"
 # project_dir <- "V:\\whiteboxing\\"
 # project_dir <- "C:\\Users\\Crutt\\Documents\\whiteboxing\\tests\\"
-project_dir <- "/datadisk/whiteboxing/2020GBM/"
+project_dir <- "/datadisk/whiteboxing/2020Ada2_copy/"
 
 datasetnames <- c("adult"
                   , "bankmark"

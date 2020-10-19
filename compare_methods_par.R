@@ -13,16 +13,16 @@ max_tests <- 1000
 
 # model <- "rf"
 # model <- "samme"
-# model <- "samme.r"
-model <- "gbm"
+model <- "samme.r"
+# model <- "gbm"
 
-algorithm <- "inTrees"
-# algorithm <- "BRL"
+# algorithm <- "inTrees"
+algorithm <- "BRL"
 
 results_nrows <- length(random_states) * length(datasetnames)
 
 # choose a db
-rnr <- 1
+rnr <- 9
 
 if (model=="rf") {
   # adult
@@ -134,6 +134,7 @@ if (model %in% c("samme", "samme.r")) {
                             , newdata = ds_container$X_test
                             , n.trees = ntree
                             , type = "vector")
+    forest_label <- relevel(forest_label, classes[1]) # bug in ada? vector returns default alphabetically indexed factor, not the values used in the training.
     forest_preds <- as.integer(forest_label)
     
     tree_preds <- sapply(1:ntree, function(t) {
@@ -317,7 +318,7 @@ write.csv(data.frame(dataset_name = rep(datasetnames[i], n_test)
                , true_class = as.numeric(ds_container$y_test[1:n_test]) - 1 # conform with Python zero base
                , true_class_label = as.character(ds_container$y_test[1:n_test]) 
                , pred_class = forest_preds[1:n_test] - 1 # conform with Python zero base
-               , pred_class_label = forest_label[1:n_test]
+                     , pred_class_label = forest_label[1:n_test]
                , target_class = benchmark$label[1:n_test] - 1  # conform with Python zero base
                , target_class_label = classes[benchmark$label][1:n_test]
                , forest_vote_share = forest_vote_share[1:n_test]
