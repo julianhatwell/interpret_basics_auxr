@@ -39,23 +39,29 @@ myPalBrandContrasts <- c(k.purple, k.brightorange, k.lime
 myPalNeut <- c(k.warmgrey9, k.warmgrey2, k.coolgrey9, k.coolgrey4, k.wheat, k.stone,  "#414346")
 myPalNeut2 <- c(k.coolgrey4, k.coolgrey9, k.warmgrey9, k.warmgrey2, k.stone, k.wheat)
 
-k.grad.purple <- colorRampPalette(c("#1D165D", "#7C5DC6"))
-k.grad.purple.rev <- colorRampPalette(rev(c("#1D165D", "#7C5DC6")))
+grad.purp <- c("#6D066D", "#8C6DD6")
+k.grad.purple <- colorRampPalette(grad.purp)
+k.grad.purple.rev <- colorRampPalette(rev(grad.purp))
 
-k.grad.red <- colorRampPalette(c("#9E1B32", "#E70033"))
-k.grad.red.rev <- colorRampPalette(rev(c("#9E1B32", "#E70033")))
+grad.red <- c("#A80212", "#F71043")
+k.grad.red <- colorRampPalette(grad.red)
+k.grad.red.rev <- colorRampPalette(rev(grad.red))
 
-k.grad.grey <- colorRampPalette(c("#4D4E53", "#9A9B9D"))
-k.grad.grey.rev <- colorRampPalette(rev(c("#4D4E53", "#9A9B9D")))
+grad.grey <- c("#2D2E23", "#AAABAD")
+k.grad.grey <- colorRampPalette(grad.grey)
+k.grad.grey.rev <- colorRampPalette(rev(grad.grey))
 
-k.grad.blue <- colorRampPalette(c("#0071B2", "#00B8E4"))
-k.grad.blue.rev <- colorRampPalette(rev(c("#0071B2", "#00B8E4")))
+grad.blue <- c("#0071B2", "#10C8F4")
+k.grad.blue <- colorRampPalette(grad.blue)
+k.grad.blue.rev <- colorRampPalette(rev(grad.blue))
 
-k.grad.orange <- colorRampPalette(c("#C05017", "#FF9231"))
-k.grad.orange.rev <- colorRampPalette(rev(c("#C05017", "#FF9231")))
+grad.orange <- c("#DE4B00", "#FFA241")
+k.grad.orange <- colorRampPalette(grad.orange)
+k.grad.orange.rev <- colorRampPalette(rev(grad.orange))
 
-k.grad.green <- colorRampPalette(c("#5A8E22", "#A3D869"))
-k.grad.green.rev <- colorRampPalette(rev(c("#5A8E22", "#A3D869")))
+grad.green <- c("#2A5E02", "#B3E879")
+k.grad.green <- colorRampPalette(grad.green)
+k.grad.green.rev <- colorRampPalette(rev(grad.green))
 
 # applied to lattice
 MyLatticeFont <- list(font = 1, cex = 1)

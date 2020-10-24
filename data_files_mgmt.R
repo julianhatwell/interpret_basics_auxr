@@ -5,17 +5,6 @@ if (grepl("linux", Sys.getenv()[['R_LIBS_USER']])) {
   pathsep <- "\\"
 }
 
-# data settings
-# data_dir <- "C:\\Users\\id126493\\Documents\\GitHub\\explain_te\\CHIRPS\\datafiles\\"
-# data_dir <- "C:\\Users\\Crutt\\Documents\\GitHub\\explain_te\\CHIRPS\\datafiles\\"
-data_dir <- "~/Documents/github/explain_te/CHIRPS/datafiles/"
-# datafilesdir <- "c:\\Dev\\Study\\Python\\explain_te\\forest_surveyor\\datafiles\\"
-
-# project_dir <- "V:\\whiteboxing\\tests\\"
-# project_dir <- "V:\\whiteboxing\\"
-# project_dir <- "C:\\Users\\Crutt\\Documents\\whiteboxing\\tests\\"
-project_dir <- "/datadisk/whiteboxing/2020Ada2_copy/"
-
 datasetnames <- c("adult"
                   , "bankmark"
                   , "car"
